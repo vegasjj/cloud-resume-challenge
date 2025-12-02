@@ -59,18 +59,24 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Upload static site files to Azure Storage
+        env:
+          STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
         run: |
           az storage blob upload-batch \
-            --account-name stcrc002 \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
             --destination '$web' \
             --source ./frontend/resume \
             --auth-mode login \
             --overwrite
 
       - name: Purge CDN endpoint
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          CDN_ENDPOINT: ${{ vars.AZURE_CDN_ENDPOINT }}
+          CDN_PROFILE: ${{ vars.AZURE_CDN_PROFILE }}
         run: |
           az cdn endpoint purge \
-            -g rg-crc-prod-001 \
-            -n ep-crc-prod-001 \
-            --profile-name cdn-crc-prod-001 \
+            -g ${{ env.RESOURCE_GROUP }} \
+            -n ${{ env.CDN_ENDPOINT }} \
+            --profile-name ${{ env.CDN_PROFILE }} \
             --content-paths "/*"
