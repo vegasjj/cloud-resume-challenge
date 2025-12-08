@@ -76,7 +76,7 @@ When you have all this in place, you could login locally to **Terraform Cloud** 
 cd
 ```
 
-Now open `vim` (or the text editor you prefer) to create the following file:
+Now use a text editor (I will use `vim`) to create the following file:
 
 ```sh
 vim .terraform.d/credentials.tfrc.json
@@ -93,14 +93,119 @@ Paste this json snippet and replace `<API token>` with your own token before sav
 }
 ```
 
-Now you need to configure two environment variables belonging to your terraform organization and workspace you created earlier:
+Next, you need to configure two environment variables belonging to your terraform organization and workspace you created earlier:
 
 ```sh
 export TF_CLOUD_ORGANIZATION=<your organization>
 export TF_WORKSPACE=<your workspace>
 ```
 
-Now you should be good and ready to run `terraform plan` and `terraform apply` commands locally when you start coding and testing your infrastructure.
+Create a `terraform.tf` file:
+
+```sh
+vim terraform.tf
+```
+
+Paste the following code snippet and make sure to pin the terraform and provider version so that you always run jobs under a version you have perviously tested (in my case I'm using `terraform 1.14.1` and `azurerm 4.55.0` which are the stable versions as of december 2025):
+
+```sh
+terraform {
+  required_version = "1.14.1"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "4.55.0"
+    }
+  }
+
+    cloud {}
+}
+```
+
+Note the `cloud` block is empty as you already have configured the environment variables `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE`, so you can skip the step to declare them here (you can still choose to do it, however, consider comment them when you've setup CI/CD with GitHub Actions because they will be declared there and might be redundant). However, don't delete the block as it is necessary for terraform to setup a remote state.
+
+Finally, you can run:
+
+```sh
+terraform init
+```
+
+You should see an output similar to this:
+
+```sh
+Initializing HCP Terraform...
+Initializing provider plugins...
+- Reusing previous version of hashicorp/azurerm from the dependency lock file
+- Using previously-installed hashicorp/azurerm v4.55.0
+
+HCP Terraform has been successfully initialized!
+
+You may now begin working with HCP Terraform. Try running "terraform plan" to
+see any changes that are required for your infrastructure.
+
+If you ever set or change modules or Terraform Settings, run "terraform init"
+again to reinitialize your working directory.
+```
+
+If you see it, it means that the **Terraform CLI** has been authenticated with your workspace on **Terraform Cloud** and you should be good and ready to run `terraform plan` and `terraform apply` commands locally when you start coding and testing your infrastructure. You will see the terraform logs from your terminal but the jobs will be executing remotely and your state will be saved on **Terraform Cloud** as well.
+
+Also, a [.terraform.lock.hcl](.terraform.lock.hcl) will be created on your base directory to ensure the required version of the provider is locked. You will need to run `terraform init -upgrade` every time you modify the provider version otherwise you will see an error:
+
+```sh
+Waiting for the plan to start...
+
+Terraform v1.14.1
+on linux_amd64
+Initializing plugins and modules...
+Initializing HCP Terraform...
+Initializing provider plugins...
+- Reusing previous version of hashicorp/azurerm from the dependency lock file
+╷
+│ Error: Failed to query available provider packages
+│ 
+│ Could not retrieve the list of available versions for provider
+│ hashicorp/azurerm: locked provider registry.terraform.io/hashicorp/azurerm
+│ 4.52.0 does not match configured version constraint 4.55.0; must use
+│ terraform init -upgrade to allow selection of new versions
+│ 
+│ To see which modules are currently depending on hashicorp/azurerm and what
+│ versions are specified, run the following command:
+│     terraform providers
+╵
+Operation failed: failed running terraform init (exit 1)
+```
+
+As you can see above, [terraform.tf](./terraform.tf) was modified to work with `azurerm 4.55.0` but [.terraform.lock.hcl](.terraform.lock.hcl) hasn't been upgraded from `azurerm 4.52.0`.
+
+Make sure to match the required terraform version on [terraform.tf](./terraform.tf) with the one configured on your **Terraform Cloud** workspace's settings:
+
+![](./images/required-terraform-version.png)
+
+If you don't, you may receive an `Unsupported Terraform Core version` error like this one:
+
+```sh
+Waiting for the plan to start...
+
+Terraform v1.14.0
+on linux_amd64
+Initializing plugins and modules...
+Initializing HCP Terraform...
+╷
+│ Error: Unsupported Terraform Core version
+│ 
+│   on terraform.tf line 2, in terraform:
+│    2:   required_version = "1.14.1"
+│ 
+│ This configuration does not support Terraform version 1.14.0. To proceed,
+│ either choose another supported Terraform version or update this version
+│ constraint. Version constraints are normally set for good reason, so
+│ updating the constraint may lead to other errors or unexpected behavior.
+╵
+Operation failed: failed running terraform init (exit 1)
+```
+
+As you can see above, the workspace is configured to run version `1.14.0` while the [terraform.tf](./terraform.tf) file was expecting version `1.14.1`
 
 <!-- To install **Azure Functions Core Tools run**:
 
@@ -109,3 +214,6 @@ sudo apt-get install azure-functions-core-tools-4
 ```
 
 In GitHub Codespaces you don't need to configure Microsoft repository to install [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=linux%2Cisolated-process%2Cnode-v4%2Cpython-v2%2Chttp-trigger%2Ccontainer-apps&pivots=programming-language-python), but you might need to do it in your own PC. -->
+
+<!-- Example for link to specific line
+[Upload static site files to Azure Storage](../.github/workflows/deploy.yml#L61) -->
