@@ -1,7 +1,3 @@
-locals {
-  static_web_host = trim(replace(azurerm_storage_account.staticweb.primary_web_endpoint, "https://", ""), "/")
-}
-
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
@@ -26,6 +22,10 @@ resource "azurerm_cdn_profile" "cdn_profile" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = "global"
   sku                 = "Standard_Microsoft"
+}
+
+locals {
+  static_web_host = trim(replace(azurerm_storage_account.staticweb.primary_web_endpoint, "https://", ""), "/")
 }
 
 resource "azurerm_cdn_endpoint" "cdn_endpoint" {

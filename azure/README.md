@@ -28,7 +28,7 @@ To login to Azure CLI run:
 az login --use-device-code
 ```
 
-As I'm using GitHub Codespaces as my development environment (which doesn't have direct browser access) I need to use the `--use-device-code` option. If you are using your own PC just run `az login` and follow the login workflow to enter your credentials.
+As I'm using GitHub Codespaces as my development environment (which doesn't have direct browser access) I need to use the `--use-device-code` option. If you are using your own PC just run `az login` and follow the login workflow to enter your credentials (later when we setup CI/CD with GitHub Actions, we will be using managed identities with OpenID Connect for authentication).
 
 Make sure to select the Azure subscription where you want to deploy the resources so that when you run terraform locally for testing you don't deploy on the wrong subscription by accident (ignore this if you only have one subscription).
 
@@ -45,6 +45,8 @@ az account set -s <subscription-id>
 ```
 
 ### Setting Up Terraform
+
+#### Installing Terraform CLI
 
 For **Terraform**, install the Hashicorp keys:
 
@@ -64,7 +66,69 @@ Finally, update the repository and install **Terraform**:
 sudo apt update && sudo apt install terraform
 ```
 
-We will be saving the Azure terraform state to [Terraform Cloud](https://spacelift.io/blog/what-is-terraform-cloud) so that we can use it with the ephemeral jobs of GitHub Actions at deployment. If we would keep our terraform state local we could only use it from that environment which is not the most flexible way and we could't leverage DevOps tooling.
+#### Setting Up Terraform CLI with Local State
+
+We need to configure the **Terraform CLI** for it to work with a local state while we test our configuration (later we will move to a remote state using Terraform Cloud and automation with GitHub Actions).
+
+Now, use a text editor (I will use `vim`) to create/open the `terraform.tf` file:
+
+```sh
+vim terraform.tf
+```
+
+Paste the following code snippet and make sure to pin the terraform and provider version so that you always run jobs under a version you have perviously tested (in my case I'm using terraform 1.14.1 and azurerm 4.55.0 which are the stable versions as of december 2025)::
+
+```sh
+terraform {
+  required_version = "1.14.1"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "4.55.0"
+    }
+  }
+  
+    # cloud {}
+}
+```
+
+Note the `cloud` block is commented because we are not using a remote state yet.
+
+Then, you can run:
+
+```sh
+terraform init
+```
+
+You should see an output similar to this:
+
+```sh
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/azurerm versions matching "= 4.55.0"...
+- Installing hashicorp/azurerm v4.55.0...
+- Installed hashicorp/azurerm v4.55.0 (signed by HashiCorp)
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+With the last step completed, the **Terraform CLI** should be able run `terraform plan` and `terraform apply` commands, store states locally and run jobs directly own your development environment. Terraform will [authenticate implicitly with Azure](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/azure_cli) if you already authenticated with the **Azure CLI** as stated [before](#setting-up-azure-cli).
+
+From here you can [proceed to setup terraform files](#setting-up-terraform-files)
+
+#### Setting Up Terraform CLI with Remote State
+
+When we are ready to automate our deployment we will be saving the Azure terraform state to [Terraform Cloud](https://spacelift.io/blog/what-is-terraform-cloud) so that we can use it with the ephemeral jobs of GitHub Actions at deployment. If we would keep our terraform state local we could only use it from that environment which is not the most flexible way and we could't leverage DevOps tooling.
 
 To achieve this, you first need to create an account on [Terraform Cloud](https://app.terraform.io/session) and then set up an [organization](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations#creating-organizations) and a [workspace](https://developer.hashicorp.com/terraform/cloud-docs/workspaces) where you would be able to manage your state, access settings, jobs, etc.
 
@@ -76,7 +140,7 @@ When you have all this in place, you could login locally to **Terraform Cloud** 
 cd
 ```
 
-Now use a text editor (I will use `vim`) to create the following file:
+Now, create the following file:
 
 ```sh
 vim .terraform.d/credentials.tfrc.json
@@ -100,13 +164,13 @@ export TF_CLOUD_ORGANIZATION=<your organization>
 export TF_WORKSPACE=<your workspace>
 ```
 
-Create a `terraform.tf` file:
+Open the `terraform.tf` file:
 
 ```sh
 vim terraform.tf
 ```
 
-Paste the following code snippet and make sure to pin the terraform and provider version so that you always run jobs under a version you have perviously tested (in my case I'm using `terraform 1.14.1` and `azurerm 4.55.0` which are the stable versions as of december 2025):
+Paste the following code snippet (note the `cloud` block is uncommented now):
 
 ```sh
 terraform {
@@ -123,7 +187,7 @@ terraform {
 }
 ```
 
-Note the `cloud` block is empty as you already have configured the environment variables `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE`, so you can skip the step to declare them here (you can still choose to do it, however, consider comment them when you've setup CI/CD with GitHub Actions because they will be declared there and might be redundant). However, don't delete the block as it is necessary for terraform to setup a remote state.
+As you can see, the `cloud` block is empty as you already have configured the environment variables `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE`, so you can skip the step to declare them here (you can still choose to do it, however, consider comment them when you've setup CI/CD with GitHub Actions because they will be declared there and might be redundant). However, don't delete the block as it is necessary for terraform to setup a remote state.
 
 Finally, you can run:
 
@@ -148,7 +212,7 @@ If you ever set or change modules or Terraform Settings, run "terraform init"
 again to reinitialize your working directory.
 ```
 
-If you see it, it means that the **Terraform CLI** has been authenticated with your workspace on **Terraform Cloud** and you should be good and ready to run `terraform plan` and `terraform apply` commands locally when you start coding and testing your infrastructure. You will see the terraform logs from your terminal but the jobs will be executing remotely and your state will be saved on **Terraform Cloud** as well.
+If you see it, it means that the **Terraform CLI** has been authenticated with your workspace on **Terraform Cloud** but you won't be able to run `terraform plan` and `terraform apply` commands for local testing until you set the environment variables to authenticate with Azure in your workspace's settings. You will see the terraform logs from your terminal but the jobs will be executing remotely and your state will be saved on **Terraform Cloud** as well.
 
 Also, a [.terraform.lock.hcl](.terraform.lock.hcl) will be created on your base directory to ensure the required version of the provider is locked. You will need to run `terraform init -upgrade` every time you modify the provider version otherwise you will see an error:
 
@@ -206,6 +270,84 @@ Operation failed: failed running terraform init (exit 1)
 ```
 
 As you can see above, the workspace is configured to run version `1.14.0` while the [terraform.tf](./terraform.tf) file was expecting version `1.14.1`
+
+#### Setting Up Terraform Files
+
+You need to create the `provider.tf` file:
+
+```sh
+touch provider.tf
+```
+
+This file is necessary to declare the Azure provider we are using (`azurerm`) and any optional features that might be needed.
+
+Open the file:
+
+```sh
+vim provider.tf
+```
+
+ Then, copy the content from [`provider.tf`](provider.tf).
+
+The next file is `variables.tf`:
+
+```sh
+touch variables.tf
+```
+
+You will need this file to declare the variables to be used in your Azure infrastructure, this way you avoid hardcoding values on your code and much more maintainable.
+
+Open the file:
+
+```sh
+vim variables.tf
+```
+
+You can use [`variables.tf`](variables.tf) as a template but you might want to use your own naming convention.
+
+Finally, create the `main.tf` file:
+
+```sh
+touch main.tf
+```
+
+This will be the main document where you will write you resources using [Hashicorp Configuration Language](https://developer.hashicorp.com/terraform/language) or `HCL` for short.
+
+You can copy the content from [`main.tf`](main.tf) (which I will discuss much more [bellow](#azure-infrastructure-key-considerations)) after you have opened the file:
+
+```sh
+vim main.tf
+```
+
+## Azure Infrastructure Key Considerations
+
+When writing the Azure Infrastructure (where the resume will be served as a static site) on `main.tf`, the following considerations were taken:
+
+- A [resource group](https://dev.to/lotanna_obianefo/understanding-azure-resource-groups-a-comprehensive-guide-34he) was needed to hold all the frontend resources.
+- I used the `eastus` [region](https://learn.microsoft.com/en-us/azure/reliability/regions-list) as it was closer to my location.
+- For the **storage account** where the resume files will be stored ([using blob storage](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction)), the [standard tier](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview?toc=%2Fazure%2Fstorage%2Fblobs%2Ftoc.json&bc=%2Fazure%2Fstorage%2Fblobs%2Fbreadcrumb%2Ftoc.json) and [Locally Redundant Storage replication](https://learn.microsoft.com/en-us/azure/storage/common/storage-redundancy) (LRS) were chosen as the more cost-effective options for our purposes.
+- The [built-in feature to serve static sites stored as blob files](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-static-website) was used to publish the resume static files.
+- As **Azure Storage** doesn't support HTTP infrastructure with custom domains, it was needed to use [Azure CDN](https://docs.azure.cn/en-us/cdn/cdn-overview) to enable this functionality. **Note**: is no longer possible use the `Standard_Microsoft` SKU for Azure CDN as it was deprecated in [August 2025](https://www.linkedin.com/pulse/azure-cdn-standard-from-microsoft-classic-retirement-what-salamat-l4n1f/). The only options within Azure is to use [Azure Front Door](https://learn.microsoft.com/en-us/azure/frontdoor/front-door-overview) on its [standard or premium tier](https://learn.microsoft.com/en-us/azure/frontdoor/front-door-cdn-comparison) which could be cost-prohibited if you only plan to host a site on that service.
+- [The endpoint configured in the Azure CDN profile](https://learn.microsoft.com/en-us/azure/cdn/scripts/cli/cdn-azure-cli-create-endpoint?toc=%2Fazure%2Ffrontdoor%2Ftoc.json) was configured to be accessible through HTTPS only.
+- The local variable `static_web_host` was created to avoid redundant code when configuring the endpoint.
+- The endpoint was set up to validate ownership of a domain ([resume.technicalmind.cloud](https://resume.technicalmind.cloud)) in an external registrar (in my case I used Cloudflare) and enable a [managed certificate without additional cost](./images/domain-certificate-validation.png).
+- You need to set up a [CNAME record pointing to your endpoint hostname](./images/cloudflare-cname-record.png) before applying the infrastructure otherwise the deployment will fail.
+
+## Locally Testing Your Terraform Configuration
+
+In time, we will use **GitHub Actions** workflows to automate deployment but, right now you are ready to test your terraform configuration to see if the Azure resources are deployed in the way you expect.
+
+If your followed the instructions to setup [Azure CLI](#setting-up-azure-cli) and [Terraform CLI](#installing-terraform-cli) you are good to go. Just double check the Azure subscription your are pointing to because it will be there where terraform will deploy your infrastructure (so make sure the identity you logged in to has sufficient privileges, a [contributor role](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/privileged#contributor)  will be enough for now, we will tighten up things later).
+
+Next, you will be using [`terraform plan`](https://developer.hashicorp.com/terraform/cli/commands/plan) and [`terraform apply`](https://developer.hashicorp.com/terraform/cli/commands/apply) to both preview and apply your configuration.
+
+If all goes well you should see the three resources on the [Azure Portal](https://portal.azure.com/):
+
+![An Azure resource group containing an Azure Front Door profile, a CDN endpoint and a storage account](./images/frontend-resources-deployed.png)
+
+<!-- ## Setting Up the Azure Account
+
+Now that you know that your terraform configuration works as intended we can proceed to make the definitive adjustments on Azure to setup authentication for automation with GitHub Actions. -->
 
 <!-- To install **Azure Functions Core Tools run**:
 
