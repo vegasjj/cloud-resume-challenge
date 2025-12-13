@@ -1,10 +1,10 @@
-# Backend Technical Specifications
+# Writing and Deploying the Resume's Frontend
 
 The following Azure resources directly serve the static site's files, set up the custom domain and configure the HTTPS infrastructure:
 
-- Azure Storage Account.
-- Azure CDN Profile.
-- Azure CDN Endpoint.
+- An Azure Storage Account.
+- An Azure CDN Profile.
+- An Azure CDN Endpoint.
 
 ## Local Development Environment details
 
@@ -48,7 +48,7 @@ az account set -s <subscription-id>
 
 #### Installing Terraform CLI
 
-For **Terraform**, install the Hashicorp keys:
+First, install the Hashicorp keys:
 
 ```sh
 wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -157,7 +157,7 @@ Paste this json snippet and replace `<API token>` with your own token before sav
 }
 ```
 
-Next, you need to configure two environment variables belonging to your terraform organization and workspace you created earlier:
+Next, you need to configure two environment variables belonging to the terraform organization and workspace you created earlier:
 
 ```sh
 export TF_CLOUD_ORGANIZATION=<your organization>
@@ -187,7 +187,7 @@ terraform {
 }
 ```
 
-As you can see, the `cloud` block is empty as you already have configured the environment variables `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE`, so you can skip the step to declare them here (you can still choose to do it, however, consider comment them when you've setup CI/CD with GitHub Actions because they will be declared there and might be redundant). However, don't delete the block as it is necessary for terraform to setup a remote state.
+As you can see, the `cloud` block is empty as you already have configured the environment variables `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE`, so you can skip the step to declare them in the `cloud` block (you can still choose to do it, however, consider comment them when you've setup CI/CD with GitHub Actions because they will be declared directly on that workflow and might be redundant). However, don't delete the block as it is necessary for terraform to setup a remote state.
 
 Finally, you can run:
 
@@ -214,7 +214,7 @@ again to reinitialize your working directory.
 
 If you see it, it means that the **Terraform CLI** has been authenticated with your workspace on **Terraform Cloud** but you won't be able to run `terraform plan` and `terraform apply` commands for local testing until you set the environment variables to authenticate with Azure in your workspace's settings. You will see the terraform logs from your terminal but the jobs will be executing remotely and your state will be saved on **Terraform Cloud** as well.
 
-Also, a [.terraform.lock.hcl](.terraform.lock.hcl) will be created on your base directory to ensure the required version of the provider is locked. You will need to run `terraform init -upgrade` every time you modify the provider version otherwise you will see an error:
+Also, a [.terraform.lock.hcl](.terraform.lock.hcl) will be created on your base directory to ensure the required version of the provider is locked. You will need to run `terraform init -upgrade` every time you modify the provider version otherwise you will see a `Failed to query available provider packages` error:
 
 ```sh
 Waiting for the plan to start...
@@ -295,7 +295,7 @@ The next file is `variables.tf`:
 touch variables.tf
 ```
 
-You will need this file to declare the variables to be used in your Azure infrastructure, this way you avoid hardcoding values on your code and much more maintainable.
+You will need this file to declare the variables to be used in your Azure infrastructure, this way you avoid hardcoding values on your code and is much more maintainable.
 
 Open the file:
 
@@ -327,7 +327,7 @@ When writing the Azure Infrastructure (where the resume will be served as a stat
 - I used the `eastus` [region](https://learn.microsoft.com/en-us/azure/reliability/regions-list) as it was closer to my location.
 - For the **storage account** where the resume files will be stored ([using blob storage](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction)), the [standard tier](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview?toc=%2Fazure%2Fstorage%2Fblobs%2Ftoc.json&bc=%2Fazure%2Fstorage%2Fblobs%2Fbreadcrumb%2Ftoc.json) and [Locally Redundant Storage replication](https://learn.microsoft.com/en-us/azure/storage/common/storage-redundancy) (LRS) were chosen as the more cost-effective options for our purposes.
 - The [built-in feature to serve static sites stored as blob files](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-static-website) was used to publish the resume static files.
-- As **Azure Storage** doesn't support HTTP infrastructure with custom domains, it was needed to use [Azure CDN](https://docs.azure.cn/en-us/cdn/cdn-overview) to enable this functionality. **Note**: is no longer possible use the `Standard_Microsoft` SKU for Azure CDN as it was deprecated in [August 2025](https://www.linkedin.com/pulse/azure-cdn-standard-from-microsoft-classic-retirement-what-salamat-l4n1f/). The only options within Azure is to use [Azure Front Door](https://learn.microsoft.com/en-us/azure/frontdoor/front-door-overview) on its [standard or premium tier](https://learn.microsoft.com/en-us/azure/frontdoor/front-door-cdn-comparison) which could be cost-prohibited if you only plan to host a site on that service.
+- As **Azure Storage** doesn't support HTTP infrastructure with custom domains, it was needed to integrate it with [Azure CDN](https://docs.azure.cn/en-us/cdn/cdn-overview) to enable this functionality. **Note**: is no longer possible use the `Standard_Microsoft` SKU for Azure CDN as it was deprecated in [August 2025](https://www.linkedin.com/pulse/azure-cdn-standard-from-microsoft-classic-retirement-what-salamat-l4n1f/). The only options within Azure is to use [Azure Front Door](https://learn.microsoft.com/en-us/azure/frontdoor/front-door-overview) on its [standard or premium tier](https://learn.microsoft.com/en-us/azure/frontdoor/front-door-cdn-comparison) which could be cost-prohibited if you only plan to host a site on that service.
 - [The endpoint configured in the Azure CDN profile](https://learn.microsoft.com/en-us/azure/cdn/scripts/cli/cdn-azure-cli-create-endpoint?toc=%2Fazure%2Ffrontdoor%2Ftoc.json) was configured to be accessible through HTTPS only.
 - The local variable `static_web_host` was created to avoid redundant code when configuring the endpoint.
 - The endpoint was set up to validate ownership of a domain ([resume.technicalmind.cloud](https://resume.technicalmind.cloud)) in an external registrar (in my case I used Cloudflare) and enable a [managed certificate without additional cost](./images/domain-certificate-validation.png).
@@ -345,9 +345,48 @@ If all goes well you should see the three resources on the [Azure Portal](https:
 
 ![An Azure resource group containing an Azure Front Door profile, a CDN endpoint and a storage account](./images/frontend-resources-deployed.png)
 
-<!-- ## Setting Up the Azure Account
+## Setting Up Authentication for Automation Workflow
 
-Now that you know that your terraform configuration works as intended we can proceed to make the definitive adjustments on Azure to setup authentication for automation with GitHub Actions. -->
+Now that you know that your terraform configuration works as intended, we can proceed to make the final adjustments on **Azure** to prepare authentication for the automation workflow with **GitHub Actions** and **Terraform Cloud**.
+
+### Setting Up Azure Identities
+
+In order for **Terraform Cloud** and **GitHub** can access your [subscriptions](https://learn.microsoft.com/en-us/azure/cost-management-billing/manage/cloud-subscription) to run commands and deploy resources we need to create secure identities that represent these workloads.
+
+Specifically, I recommend using [user-assigned managed identities](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/manage-user-assigned-managed-identities-azure-cli) as they are ideal for this scenario (workloads external to Azure with non-interactive authentication) with the added benefit that we don't need to rotate secrets manually (Azure manage secrets automatically).
+
+Normally, we can only use managed identities to authenticate resources within Azure, in fact, system-assigned managed identities  cannot be used outside Azure, however, [user-assigned managed identities](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/manage-user-assigned-managed-identities-azure-cli) can "break" this rule by using the [OpenID Connect](https://openid.net/developers/how-connect-works/) (OIDC) protocol to validate ephemeral authentication tokens from external services (like a GitHub Actions workflow requesting to deploy resources).
+
+#### Setting Up Authentication for GitHub Actions
+
+You can [use these instructions](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect) following the **option 2** to configure authentication for ephemeral jobs scoped to the specific GitHub repository where you hold your project.
+
+In short you need to:
+
+- Create a **user-assigned managed identity** by running the [`az identity create`](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/manage-user-assigned-managed-identities-azure-cli) command.
+- Configure the managed identity with the appropriate roles on the subscription of your choice. I recommend you only set the `
+CDN Endpoint Contributor` role and the `Storage Blob Data Contributor` role for this identity ([see reference image](./images/managed-identity-assigment-1.png)) as this workflow only need access to upload blobs and purge the CDN endpoint (the resources will be deployed from **Terraform Cloud** which will have its own identity).
+- Configure the identity to trust and external identity provider (in this case GitHub) using the [`az identity federated-credential create`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential#az-identity-federated-credential-create) command and providing values for [`--subject`](https://docs.github.com/en/actions/reference/security/oidc#filtering-for-a-specific-branch), [`--audiences`](https://docs.github.com/en/actions/reference/security/oidc#customizing-the-audience-value) and [`--issuer`](https://docs.github.com/en/actions/reference/security/oidc#standard-audience-issuer-and-subject-claims). You can check the federated credential configuration using the [`az identity federated-credential list`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential?view=azure-cli-latest#az-identity-federated-credential-listx) command or alternatively in the identity's settings using the [Azure Portal](https://portal.azure.com/) ([see reference image](./images/federated-managed-identity-1.png)).
+- Configure [GitHub Secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) on your project's repository with the names `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. As values you must use your identity's **Client ID**, **Tenant ID** and **Subscription ID** respectively ([see reference image](./images/github-actions-secrets.png))
+
+With this steps completed, the **GitGub Actions** workflows (executed from your project's repository) will be able to request ephemeral tokens to Azure. This tokens will be valid only for the duration of the job and scoped for the selected subscription and Azure RBAC Roles.
+
+#### Setting Up Authentication for Terraform Cloud
+
+For **Terraform Cloud** (TFC) we will be using its native integration with OIDC to allow it to request per job ephemeral tokens to authenticate and deploy resources to Azure just like we did with GitHub in the [last section](#setting-up-authentication-for-github-actions).
+
+However, every platform is different and we need to follow the [specific instructions](https://developer.hashicorp.com/terraform/cloud-docs/dynamic-provider-credentials/azure-configuration#use-dynamic-credentials-with-the-azure-provider) for TFC in this case.
+
+Just like before, we need to:
+
+- Create a **user-assigned managed identity** by running the [`az identity create`](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/manage-user-assigned-managed-identities-azure-cli) command. I recommend not to reuse the same identity you used for **GitHub Actions** as is best to create a specific one to identify this workload.
+- Configure the managed identity with the appropriate roles on the subscription of your choice. This time, you must set this identity with the `contributor` role ([see the reference image](./images/managed-identity-assigment-2.png)) as is the minimum permission required to create all the resources for this workflow (the storage account, the Azure CDN profile and the CDN endpoint).
+- Configure the identity to trust and external identity provider (in this case TFC) using the [`az identity federated-credential create`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential#az-identity-federated-credential-create) command and providing values for [subject, audiences and issuer](https://developer.hashicorp.com/terraform/cloud-docs/dynamic-provider-credentials/azure-configuration#configure-microsoft-entra-id-application-to-trust-a-generic-issuer) (this time you will need to set two federated credentials, one for apply jobs and one of plan jobs). You can check the federated credential configuration using the [`az identity federated-credential list`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential?view=azure-cli-latest#az-identity-federated-credential-listx) command or alternatively in the identity's settings using the [Azure Portal](https://portal.azure.com/) ([see reference image](./images/federated-managed-identity-2.png)).
+- Configure your TFC workspace with this environment variables: `TFC_AZURE_RUN_CLIENT_ID`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID`, `ARM_USE_CLI` and `TFC_AZURE_PROVIDER_AUTH`. As values you must use your identity's **Client ID**, **Tenant ID** and **Subscription ID** respectively. The last two must be set to `false` and `true` as this will ensure TFC attempts to authenticate using OIDC ([see reference image](./images/hcp-environment-variables.png)).
+
+With that last step, we have finished our configuration to authenticate TFC with Azure using OIDC.
+
+## Setting up the GitHub Actions Workflow
 
 <!-- To install **Azure Functions Core Tools run**:
 

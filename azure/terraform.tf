@@ -8,5 +8,10 @@ terraform {
     }
   }
 
-    cloud {}
+  cloud {
+    # organization = "azure-terraform-labs"
+    # workspaces {
+    #   name = "azure-cloud-resume-challenge-prod"
+    # }
+  }
 }
