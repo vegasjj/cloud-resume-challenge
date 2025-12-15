@@ -388,6 +388,43 @@ With that last step, we have finished our configuration to authenticate TFC with
 
 ## Setting up the GitHub Actions Workflow
 
+With our [terraform configuration in place](#setting-up-terraform-files) plus **GitHub** and **Terraform Cloud** (TFC) properly setup to [authenticate with Azure](#setting-up-azure-identities) we can finally write the automation workflow that will bring everything together using [GitHub Actions](https://docs.github.com/en/actions/get-started/understand-github-actions).
+
+### Setting Up the Workflow Directory
+
+First, you must create the `.github/workflows` directory in your repository's root (replace `/path/to/repo` with your actual repository path):
+
+```sh
+cd /path/to/repo
+mkdir .github/workflows
+```
+
+Inside the workflows directory you can create any number of workflows (each one represented by a file) but for now we need just one:
+
+```sh
+touch deploy.yml
+```
+
+Next, open the `deploy.yml` file:
+
+```sh
+vim deploy.yml
+```
+
+You can copy and paste the workflow from [my own implementation](./../.github/workflows/deploy.yml). Just make sure to change values appropriately for `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE` to point to your own remote state in TFC (these probably are the same values you used when setting up [terraform locally](#setting-up-terraform-cli-with-remote-state)).
+
+### Workflow's Key Considerations
+
+- The workflow triggers every time there is a push to the `main` branch (later we should limit this behavior so that only gets triggered when there is a change to the resume or the the terraform configuration).
+- The `deploy_resources` job uses a team API token (stored as a GitHub secret) to authenticate to TFC. I recommend creating a new token instead of reusing the one from when you setup [terraform locally](#setting-up-terraform-cli-with-remote-state) to minimize the attack surface in case of compromise. The possibility to use OIDC to authenticate GitHub with TFC will be explored.
+- This workflow makes use of the `hashicorp/tfc-workflows-github` action to upload the terraform configuration to TFC and apply if necessary, so any `terraform plan` or `terraform apply` commands are abstracted away.
+- The `setup_resume_files` job only starts after the`deploy_resources` is completed as it requires the Azure resources to be ready.
+- The `id-token: write` permission is necessary for the `setup_resume_files` to request the OIDC token to Azure.
+- The `azure/login@v2` action makes possible the authentication with Azure using the OIDC protocol. The secrets you setup earlier (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`) need to be referenced here.
+- The names of the Azure resources (like the storage account or the CDN profile) can be passed as variables as this aren't sensitive values ([see reference image](./images/github-actions-variables.png).)
+- The `Upload static site files to Azure Storage` step uses the [resume's directory](../frontend/resume/) to upload the necessary files to the `$web` container where they will be serve as a static site.
+- The `Purge CDN endpoint` step is tasked with [the purge of the CDN endpoint's cache](https://learn.microsoft.com/en-us/azure/cdn/cdn-purge-endpoint) every time there is a change to the resume files so the clients receive the latest version as soon as possible.
+
 <!-- To install **Azure Functions Core Tools run**:
 
 ```sh
