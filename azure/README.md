@@ -415,7 +415,7 @@ You can copy and paste the workflow from [my own implementation](./../.github/wo
 
 ### Workflow's Key Considerations
 
-- The workflow triggers every time there is a push to the `main` branch (later we should limit this behavior so that only gets triggered when there is a change to the resume or the the terraform configuration).
+- The workflow triggers every time there is a push to the `main` branch (changes to markdown files and the `./azure/images` path are excluded as triggers).
 - The `deploy_resources` job uses a team API token (stored as a GitHub secret) to authenticate to TFC. I recommend creating a new token instead of reusing the one from when you setup [terraform locally](#setting-up-terraform-cli-with-remote-state) to minimize the attack surface in case of compromise. The possibility to use OIDC to authenticate GitHub with TFC will be explored.
 - This workflow makes use of the `hashicorp/tfc-workflows-github` action to upload the terraform configuration to TFC and apply if necessary, so any `terraform plan` or `terraform apply` commands are abstracted away.
 - The `setup_resume_files` job only starts after the`deploy_resources` is completed as it requires the Azure resources to be ready.
