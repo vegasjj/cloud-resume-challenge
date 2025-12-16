@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'azure/images/**'
 
 jobs:
   deploy_resources:
