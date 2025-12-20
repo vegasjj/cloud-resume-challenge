@@ -6,7 +6,8 @@ on:
       - main
     paths-ignore:
       - '**.md'
-      - 'azure/images/**'
+      - 'azure/frontend-resources/images/**'
+      - 'azure/backend-resources/**'
 
 jobs:
   deploy_resources:
@@ -14,7 +15,7 @@ jobs:
       TF_CLOUD_ORGANIZATION: azure-terraform-labs
       TF_WORKSPACE: azure-cloud-resume-challenge-prod
       TF_API_TOKEN: "${{ secrets.TF_API_TOKEN }}"
-      CONFIG_DIRECTORY: "./azure"
+      CONFIG_DIRECTORY: "./azure/frontend-resources"
     runs-on: ubuntu-latest
     
     steps:

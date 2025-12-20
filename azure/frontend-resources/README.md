@@ -11,8 +11,9 @@ The following Azure resources directly serve the static site's files, set up the
 The following tools need to be installed to support local development:
 
 - Azure CLI.
-- Terraform CLI.
-<!-- - Azure Functions Core Tools. -->
+- Terraform CLI. ([Bicep](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview?tabs=bicep) is also an option to handle [infrastructure as code](https://learn.microsoft.com/en-us/devops/deliver/what-is-infrastructure-as-code) (IaC) natively in Azure but I chose to [Terraform](https://developer.hashicorp.com/terraform) because we can use it to support multi-cloud environments)
+<!-- - Azure Functions Core Tools.
+- Azure Functions extension. -->
 
 ### Setting up Azure CLI
 
@@ -76,7 +77,7 @@ Now, use a text editor (I will use `vim`) to create/open the `terraform.tf` file
 vim terraform.tf
 ```
 
-Paste the following code snippet and make sure to pin the terraform and provider version so that you always run jobs under a version you have perviously tested (in my case I'm using terraform 1.14.1 and azurerm 4.55.0 which are the stable versions as of december 2025)::
+Paste the following code snippet and make sure to pin the terraform and provider version so that you always run jobs under a version you have perviously tested (in my case I'm using terraform 1.14.1 and azurerm 4.55.0 which are the stable versions as of december 2025):
 
 ```sh
 terraform {
@@ -311,7 +312,7 @@ Finally, create the `main.tf` file:
 touch main.tf
 ```
 
-This will be the main document where you will write you resources using [Hashicorp Configuration Language](https://developer.hashicorp.com/terraform/language) or `HCL` for short.
+This will be the main document where you will write your resources using [Hashicorp Configuration Language](https://developer.hashicorp.com/terraform/language) or `HCL` for short.
 
 You can copy the content from [`main.tf`](main.tf) (which I will discuss much more [bellow](#azure-infrastructure-key-considerations)) after you have opened the file:
 

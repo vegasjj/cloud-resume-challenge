@@ -7,7 +7,8 @@ terraform {
       version = "4.55.0"
     }
   }
-
+  
+  # This block should only be uncommented for local testing
   cloud {
     # organization = "azure-terraform-labs"
     # workspaces {
