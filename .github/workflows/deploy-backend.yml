@@ -89,7 +89,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install create-entity-module requirements
-        run: pip install -r create-entity-module/requirements.txt
+        run: pip install -r ./azure/backend-resources/create-entity-module/requirements.txt
 
       - name: Run create_entity.py to create Cosmos DB entity
         env:
@@ -97,7 +97,7 @@ jobs:
           COSMOS_DB_TABLE_NAME: ${{ vars.COSMOS_DB_TABLE_NAME }}
           COSMOS_DB_PARTITION_KEY: ${{ vars.COSMOS_DB_PARTITION_KEY }}
           COSMOS_DB_ROW_KEY: ${{ vars.COSMOS_DB_ROW_KEY }}
-        run: python create-entity-module/create_entity.py
+        run: python ./azure/backend-resources/create-entity-module/create_entity.py
 
       - name: Remove temporary role assignment
         if: always()
@@ -140,5 +140,5 @@ jobs:
           az functionapp deployment source config-zip \
             --name ${{ env.FUNCTION_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --src ./visitor-counter/visitor-counter.zip \
+            --src ./azure/backend-resources/visitor-counter/visitor-counter.zip \
             --build-remote true
