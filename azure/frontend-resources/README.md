@@ -77,11 +77,11 @@ Now, use a text editor (I will use `vim`) to create/open the `terraform.tf` file
 vim terraform.tf
 ```
 
-Paste the following code snippet and make sure to pin the terraform and provider version so that you always run jobs under a version you have perviously tested (in my case I'm using terraform 1.14.1 and azurerm 4.55.0 which are the stable versions as of december 2025):
+Paste the following code snippet and make sure to pin the terraform and provider version so that you always run jobs under a version you have perviously tested (in my case I'm using terraform 1.14.3 and azurerm 4.55.0 which are the stable versions as of december 2025):
 
 ```sh
 terraform {
-  required_version = "1.14.1"
+  required_version = "1.14.3"
 
   required_providers {
     azurerm = {
@@ -175,7 +175,7 @@ Paste the following code snippet (note the `cloud` block is uncommented now):
 
 ```sh
 terraform {
-  required_version = "1.14.1"
+  required_version = "1.14.3"
 
   required_providers {
     azurerm = {
@@ -220,7 +220,7 @@ Also, a [.terraform.lock.hcl](.terraform.lock.hcl) will be created on your base 
 ```sh
 Waiting for the plan to start...
 
-Terraform v1.14.1
+Terraform v1.14.3
 on linux_amd64
 Initializing plugins and modules...
 Initializing HCP Terraform...
@@ -403,16 +403,16 @@ mkdir .github/workflows
 Inside the workflows directory you can create any number of workflows (each one represented by a file) but for now we need just one:
 
 ```sh
-touch deploy.yml
+touch deploy-frontend.yml
 ```
 
-Next, open the `deploy.yml` file:
+Next, open the `deploy-frontend.yml` file:
 
 ```sh
-vim deploy.yml
+vim deploy-frontend.yml
 ```
 
-You can copy and paste the workflow from [my own implementation](./../.github/workflows/deploy.yml). Just make sure to change values appropriately for `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE` to point to your own remote state in TFC (these probably are the same values you used when setting up [terraform locally](#setting-up-terraform-cli-with-remote-state)).
+You can copy and paste the workflow from [my own implementation](./../.github/workflows/deploy-frontend.yml). Just make sure to change values appropriately for `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE` to point to your own remote state in TFC (these probably are the same values you used when setting up [terraform locally](#setting-up-terraform-cli-with-remote-state)).
 
 ### Workflow's Key Considerations
 
@@ -425,14 +425,3 @@ You can copy and paste the workflow from [my own implementation](./../.github/wo
 - The names of the Azure resources (like the storage account or the CDN profile) can be passed as variables as this aren't sensitive values ([see reference image](./images/github-actions-variables.png).)
 - The `Upload static site files to Azure Storage` step uses the [resume's directory](../frontend/resume/) to upload the necessary files to the `$web` container where they will be serve as a static site.
 - The `Purge CDN endpoint` step is tasked with [the purge of the CDN endpoint's cache](https://learn.microsoft.com/en-us/azure/cdn/cdn-purge-endpoint) every time there is a change to the resume files so the clients receive the latest version as soon as possible.
-
-<!-- To install **Azure Functions Core Tools run**:
-
-```sh
-sudo apt-get install azure-functions-core-tools-4
-```
-
-In GitHub Codespaces you don't need to configure Microsoft repository to install [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=linux%2Cisolated-process%2Cnode-v4%2Cpython-v2%2Chttp-trigger%2Ccontainer-apps&pivots=programming-language-python), but you might need to do it in your own PC. -->
-
-<!-- Example for link to specific line
-[Upload static site files to Azure Storage](../.github/workflows/deploy.yml#L61) -->

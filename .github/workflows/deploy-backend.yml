@@ -1,0 +1,144 @@
+name: Deploy and setup Cloud Resume Challenge Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '**.gitignore'
+      - 'azure/frontend-resources/**'
+      - '.github/workflows/deploy-frontend.yml'
+      - 'azure/backend-resources/images/**'
+
+jobs:
+  deploy_resources:
+    env:
+      TF_CLOUD_ORGANIZATION: azure-terraform-labs
+      TF_WORKSPACE: azure-cloud-resume-challenge-backend-prod
+      TF_API_TOKEN: "${{ secrets.TF_API_TOKEN_BACKEND }}"
+      CONFIG_DIRECTORY: "./azure/backend-resources"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Upload Configuration
+        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+        id: apply-upload
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          directory: ${{ env.CONFIG_DIRECTORY }}
+
+      - name: Create Apply Run
+        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+        id: apply-run
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
+
+      - name: Apply
+        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
+        if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
+        id: apply
+        with:
+          run: ${{ steps.apply-run.outputs.run_id }}
+          comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
+
+  create_visitor_counter_entity:
+    needs: deploy_resources
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+              
+      - name: Azure Login using Managed Identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_BACKEND }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
+
+      - name: Create temporary data plane role assignment for entity creation
+        env:
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
+          PRINCIPAL_ID: ${{ secrets.AZURE_PRINCIPAL_ID }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
+          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
+          ROLE_ASSIGNMENT_ID: ${{ vars.COSMOS_DB_ROLE_ASSIGNMENT_ID }}
+          ROLE_DEFINITION_ID: "00000000-0000-0000-0000-000000000002" # Cosmos DB Built-in Data Contributor
+          
+        run: |
+          az cosmosdb sql role assignment create \
+            --role-assignment-id ${{ env.ROLE_ASSIGNMENT_ID }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --account-name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
+            --principal-id ${{ env.PRINCIPAL_ID }} \
+            --role-definition-id ${{ env.ROLE_DEFINITION_ID }} \
+            --scope "/subscriptions/${{ env.SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.DocumentDB/databaseAccounts/${{ env.COSMOS_DB_ACCOUNT_NAME }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install create-entity-module requirements
+        run: pip install -r create-entity-module/requirements.txt
+
+      - name: Run create_entity.py to create Cosmos DB entity
+        env:
+          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
+          COSMOS_DB_TABLE_NAME: ${{ vars.COSMOS_DB_TABLE_NAME }}
+          COSMOS_DB_PARTITION_KEY: ${{ vars.COSMOS_DB_PARTITION_KEY }}
+          COSMOS_DB_ROW_KEY: ${{ vars.COSMOS_DB_ROW_KEY }}
+        run: python create-entity-module/create_entity.py
+
+      - name: Remove temporary role assignment
+        if: always()
+        env:
+          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
+          ROLE_ASSIGNMENT_ID: ${{ vars.COSMOS_DB_ROLE_ASSIGNMENT_ID }}
+        run: |
+          az cosmosdb sql role assignment delete \
+            --role-assignment-id ${{ env.ROLE_ASSIGNMENT_ID }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --account-name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
+            --yes
+
+
+  setup_visitor_counter_api:
+    needs: deploy_resources
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+              
+      - name: Azure Login using Managed Identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_BACKEND }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
+
+      - name: Deploy visitor counter API files
+        env:
+          FUNCTION_NAME: ${{ vars.AZURE_FUNCTION_NAME }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
+
+        run: |
+          az functionapp deployment source config-zip \
+            --name ${{ env.FUNCTION_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --src ./visitor-counter/visitor-counter.zip \
+            --build-remote true

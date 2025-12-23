@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function() {
-    fetch('https://webresume-to-counter.azurewebsites.net/api/webresume_to_counter?')
+    fetch('https://func-crc-prod-001.azurewebsites.net/api/visitor_counter')
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -8,8 +8,8 @@ document.addEventListener("DOMContentLoaded", function() {
         })
         .then(data => {
             const element = document.querySelector('#visitor-counter');
-            if (element && data.visits_counter !== undefined) {
-                element.innerText = data.visits_counter;
+            if (element && data.visitor_counter !== undefined) {
+                element.innerText = data.visitor_counter;
             }
         })
         .catch(error => console.error('Error fetching visitor counter:', error));
