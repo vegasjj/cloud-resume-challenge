@@ -72,30 +72,6 @@ resource "azurerm_storage_container" "sc" {
   storage_account_id  = azurerm_storage_account.st.id
 }
 
-resource "azurerm_log_analytics_workspace" "law" {
-  name                          = var.log_analytics_name
-  location                      = var.location
-  resource_group_name           = azurerm_resource_group.rg.name
-  # local_authentication_enabled  = false
-  sku                           = "PerGB2018"
-  retention_in_days             = 30
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
-}
-
-resource "azurerm_application_insights" "ai" {
-  name                = var.application_insights_name
-  location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
-  workspace_id        = azurerm_log_analytics_workspace.law.id
-  application_type    = "web"
-  # local_authentication_disabled = true
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
-}
-
 resource "azurerm_service_plan" "sp" {
   name                = var.service_plan_name
   resource_group_name = azurerm_resource_group.rg.name
@@ -106,6 +82,7 @@ resource "azurerm_service_plan" "sp" {
     azurerm_resource_group.rg
   ]
 }
+
 resource "azurerm_function_app_flex_consumption" "func" {
   name                                     = var.function_app_name
   resource_group_name                      = azurerm_resource_group.rg.name
@@ -166,6 +143,30 @@ resource "azurerm_cosmosdb_sql_role_assignment" "ra" {
   role_definition_id  = azurerm_cosmosdb_sql_role_definition.rd.id
   principal_id        = azurerm_function_app_flex_consumption.func.identity.0.principal_id
   scope               = azurerm_cosmosdb_account.db.id
+}
+
+resource "azurerm_log_analytics_workspace" "law" {
+  name                          = var.log_analytics_name
+  location                      = var.location
+  resource_group_name           = azurerm_resource_group.rg.name
+  # local_authentication_enabled  = false
+  sku                           = "PerGB2018"
+  retention_in_days             = 30
+  depends_on = [
+    azurerm_resource_group.rg
+  ]
+}
+
+resource "azurerm_application_insights" "ai" {
+  name                = var.application_insights_name
+  location            = var.location
+  resource_group_name = azurerm_resource_group.rg.name
+  workspace_id        = azurerm_log_analytics_workspace.law.id
+  application_type    = "web"
+  # local_authentication_disabled = true
+  depends_on = [
+    azurerm_resource_group.rg
+  ]
 }
 
 data "azurerm_managed_api" "api_data" {

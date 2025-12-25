@@ -1,4 +1,4 @@
-# Writing and Deploying the Resume's Frontend
+# Writing and Deploying the Cloud Resume Challenge's Frontend
 
 The following Azure resources directly serve the static site's files, set up the custom domain and configure the HTTPS infrastructure:
 
@@ -11,9 +11,7 @@ The following Azure resources directly serve the static site's files, set up the
 The following tools need to be installed to support local development:
 
 - Azure CLI.
-- Terraform CLI. ([Bicep](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview?tabs=bicep) is also an option to handle [infrastructure as code](https://learn.microsoft.com/en-us/devops/deliver/what-is-infrastructure-as-code) (IaC) natively in Azure but I chose to [Terraform](https://developer.hashicorp.com/terraform) because we can use it to support multi-cloud environments)
-<!-- - Azure Functions Core Tools.
-- Azure Functions extension. -->
+- Terraform CLI. ([Bicep](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview?tabs=bicep) is also an option to handle [infrastructure as code](https://learn.microsoft.com/en-us/devops/deliver/what-is-infrastructure-as-code) (IaC) natively in Azure but I chose to use [Terraform](https://developer.hashicorp.com/terraform) because we can use it to support multi-cloud environments)
 
 ### Setting up Azure CLI
 
@@ -274,6 +272,14 @@ As you can see above, the workspace is configured to run version `1.14.0` while 
 
 #### Setting Up Terraform Files
 
+Go to your repository's root  and create the `azure/frontend-resources` directory (replace `/path/to/repo` with your actual repo's path):
+
+```sh
+cd /path/to/repo
+mkdir azure/frontend-resources
+cd azure/frontend-resources
+```
+
 You need to create the `provider.tf` file:
 
 ```sh
@@ -393,7 +399,7 @@ With our [terraform configuration in place](#setting-up-terraform-files) plus **
 
 ### Setting Up the Workflow Directory
 
-First, you must create the `.github/workflows` directory in your repository's root (replace `/path/to/repo` with your actual repository path):
+First, you must create the `.github/workflows` directory in your repository's root (replace `/path/to/repo` with your actual repo's path):
 
 ```sh
 cd /path/to/repo

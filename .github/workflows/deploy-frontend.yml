@@ -8,7 +8,7 @@ on:
       - '**.md'
       - '**.gitignore'
       - 'azure/frontend-resources/images/**'
-      - '.github/workflows/backend-frontend.yml'
+      - '.github/workflows/deploy-backend.yml'
       - 'azure/backend-resources/**'
 
 jobs:
