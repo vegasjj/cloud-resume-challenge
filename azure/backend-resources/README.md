@@ -297,7 +297,7 @@ except ResourceNotFoundError:
 
 ```
 
-In short, this code authenticates to the [Cosmos DB](#setting-up-the-cosmos-db-account) account you created earlier (using a **managed identity**) and then configures and initialize an entity in the [table](#setting-up-the-table) you already setup if it hasn't been created already by the [GitHub Actions workflow](#executing-the-create-entity-module-app) that will be in charge to execute this process.
+In short, this code authenticates to the [Cosmos DB](#setting-up-the-cosmos-db-account) account you created earlier (using a **managed identity**) and then configures and initialize an entity in the [table](#setting-up-the-table) you already setup if it hasn't been created already by this [GitHub Actions workflow](#executing-the-create-entity-module-app) which will be in charge to execute this process.
 
 If you wish to test in your local environment you can uncomment this lines:
 
@@ -311,7 +311,148 @@ Also, you need to set your `.env` file based on [`.env.example`](./create-entity
 
 ### Setting Up Authentication Between the Database and Function App
 
+As mentioned before, the **Cosmos DB** account cannot be accessed using connection strings so we need a way to the API authenticates securely to the database's data plane with permissions to update the entity storing the visitor counter.
+
+For this purpose, we proceed to configure a custom role definition which can only read and update an entity at the scope of our **Cosmos DB**  account:
+
+```sh
+resource "azurerm_cosmosdb_sql_role_definition" "rd" {
+  name                = "Azure Cosmos DB for Table Visitor Counter contributor"
+  resource_group_name = azurerm_resource_group.rg.name
+  account_name        = azurerm_cosmosdb_account.db.name
+  assignable_scopes   = [azurerm_cosmosdb_account.db.id]
+  permissions {
+    data_actions = [
+          "Microsoft.DocumentDB/databaseAccounts/readMetadata",
+          "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/read",
+          "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/replace"
+    ]
+  }
+}
+```
+
+Above, you can see the **custom role definition** is named `Azure Cosmos DB for Table Visitor Counter contributor`
+
+If you are observant, and have studied the [Cosmos DB for Table data plane security reference](https://learn.microsoft.com/en-us/azure/cosmos-db/table/reference-data-plane-security#built-in-actions), you might have noticed I'm using `sqlDatabases` instead of `tables` and `items` instead `entities`. This seems like an error, but is not.
+
+For some reason, the `azurerm_cosmosdb_sql_role_definition` provider doesn't still support the specific syntax for the **Cosmos DB for table** API and if you attempt to use you receive an `invalid SQL data action` error:
+
+![Data plane error permission for Cosmos DB for table](./images/cosmos-table-permissions.png)
+
+However, even if you use the syntax for the **Cosmos DB for SQL** API it works just fine... a mystery, I know.
+
+Next, we need to assign our custom role to the **managed identity** associated with the **function app** (using Azure RBAC) so that the API can authenticate with the table in the **Cosmos DB** account and update the visitor counter accordingly:
+
+```sh
+resource "azurerm_cosmosdb_sql_role_assignment" "ra" {
+  resource_group_name = azurerm_resource_group.rg.name
+  account_name        = azurerm_cosmosdb_account.db.name
+  role_definition_id  = azurerm_cosmosdb_sql_role_definition.rd.id
+  principal_id        = azurerm_function_app_flex_consumption.func.identity.0.principal_id
+  scope               = azurerm_cosmosdb_account.db.id
+}
+```
+
+With all this setup, we had provided secure authentication **without manual secret management, applying the principle of least privilege**, so only our API can talk to the database and execute a specific action.
+
 ### Setting Up the Azure Function
+
+If you installed and setup [Python](#setting-up-python), [Azure Functions core tools](#setting-up-azure-functions-core-tools) and the [Azure Functions extension for VS Code](#setting-up-the-azure-functions-extension-for-vs-code) you are good and ready to code your **visitor counter API**.
+
+Go to the your `visitor-counter`'s directory (replace `path/to/repo` with your actual repo's path):
+
+```sh
+cd path/to/repo/azure/backend-resources/visitor-counter
+```
+
+Next, open `function_app.py` and replace its content with the one [from my implementation](./visitor-counter/function_app.py):
+
+```sh
+import azure.functions as func
+import logging
+import os
+import json
+from azure.data.tables import TableServiceClient, UpdateMode
+from azure.identity import DefaultAzureCredential
+
+account_name = os.environ['COSMOS_DB_ACCOUNT_NAME']
+table_name = os.environ['COSMOS_DB_TABLE_NAME']
+partition_key = os.environ['COSMOS_DB_PARTITION_KEY']
+row_key = os.environ['COSMOS_DB_ROW_KEY']
+
+credential = DefaultAzureCredential()
+account_url = f"https://{account_name}.table.cosmos.azure.com:443"
+table_service = TableServiceClient(endpoint=account_url, credential=credential)
+table_client = table_service.get_table_client(table_name=table_name)
+
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+@app.route(route="visitor_counter")
+def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    This function is triggered by an HTTP request every time someone visits the cloud resume app.
+    The current "visitor_counter" value is retrieved from the "counter" table in the "visits-counter-db" cosmos db for table database and updated by one. Finally, the updated value is returned to the     cloud resume app for display.
+
+    Parameters:
+    req (func.HttpRequest): The HTTP request object.
+
+    Returns:
+    func.HttpResponse: The HTTP response object containing the updated counter value or an error message.
+    """
+    logging.info('Python HTTP trigger function processed a request.')
+
+    try:
+        counter_entity = table_client.get_entity(partition_key=partition_key, row_key=row_key)
+        current_value = counter_entity['visitor_counter']
+    except Exception as e:
+        return func.HttpResponse(f"Error retrieving counter: {e}", status_code=500)
+
+    updated_value = current_value + 1
+    counter_entity['visitor_counter'] = updated_value
+
+    try:
+        table_client.update_entity(mode=UpdateMode.REPLACE, entity=counter_entity)
+    except Exception as e:
+        return func.HttpResponse(f"Error updating counter: {e}", status_code=500)
+
+    return func.HttpResponse(
+        json.dumps({"visitor_counter": updated_value}),
+        status_code=200,
+        mimetype="application/json"
+    )
+```
+
+There are a few things happening here:
+
+- An anonymous function is configured to be triggered through HTTP requests (coming from the resume's website).
+- A route under the name `visitor_counter` is configured.
+- The [Azure SDK for Python](https://pypi.org/project/azure-data-tables/) is used to authenticate the API with the database using a **managed identity** (proper permissions [were setup earlier](#setting-up-authentication-between-the-database-and-function-app)).
+- The current value of the visitor counter entity is retrieved, and if successful, it adds 1 to the count and updates the new value in the database before sending it back to be displayed in the resume's webpage in JSON format.
+
+#### Locally testing the `visitor_counter` API
+
+Create a virtual environment in the `visitor-counter` directory:
+
+```sh
+python -m venv ./venv
+source ./venv/bin/activate
+```
+
+Install the API's dependencies:
+
+```sh
+pip install -r requirements.txt
+```
+
+Set the `local.settings.json` file (which shouldn't be committed to your repository) with appropriate values for the environment variables: `COSMOS_DB_ACCOUNT_NAME`, `COSMOS_DB_PARTITION_KEY`, `COSMOS_DB_ROW_KEY` and `COSMOS_DB_TABLE_NAME`.
+
+Execute the function locally by running:
+
+```sh
+func start
+```
+
+#### Packing the function files for deployment
 
 ### Setting Up the GitHub Actions Workflow
 
