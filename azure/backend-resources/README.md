@@ -454,9 +454,227 @@ func start
 
 #### Packing the function files for deployment
 
+In order to upload and setup the **visitor counter API** as a function in our **function app** we need to create a **zip artifact** which later will be used by [this automation workflow](#upload-and-setup-the-visitor-counter-api).
+
+We'll be using the `func pack` command available with [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=linux%2Cisolated-process%2Cnode-v4%2Cpython-v2%2Chttp-trigger%2Ccontainer-apps&pivots=programming-language-python) for this purpose.
+
+Go to the `visitor-counter`s directory (replace `path/to/repo` with your repo's actual path):
+
+```sh
+cd path/to/repo/azure/backend-resources/visitor-counter
+```
+
+Next, pack the function's files with:
+
+```sh
+func pack
+```
+
+When it finishes, you should get a **zip artifact** like [this one](./visitor-counter/visitor-counter.zip).
+
+### Locally Testing Your Terraform Configuration
+
+At this point, you can use the **Terraform CLI** locally to test your infrastructure configuration [following this instructions](../frontend-resources/README.md#locally-testing-your-terraform-configuration).
+
+If all goes well your should see these four resources on the [Azure Portal](https://portal.azure.com/):
+
+![The first four resources of the backend deployed on Azure](./images/backend-first-part.png)
+
+The [database entity](#setting-up-the-entity) and the [Azure function](#setting-up-the-azure-function) containing the **visitor counter API** won't be deployed until you configure [the automation workflow](#setting-up-the-github-actions-workflow).
+
+### Setting Up Authentication for Automation Workflow
+
+You can refer to [Setting Up Authentication for Automation Workflow](../frontend-resources/README.md#setting-up-authentication-for-automation-workflow) to configure your identities just like you did when deploying the **frontend resources**.
+
+#### Setting Up Authentication for GitHub Actions
+
+I recommend using a different identity to authenticate the **GitHub** jobs for the backend (instead of reusing the one your already configured for the frontend workflow) to align with security best practices and least privilege.
+
+In any case, you can [follow this steps](../frontend-resources/README.md#setting-up-authentication-for-github-actions) to set this up. Just make sure to assign the `contributor` role to your managed identity for now (this will be use to create the [database entity](#executing-the-create-entity-module-app) and to [deploy the Azure function](#upload-and-setup-the-visitor-counter-api)).
+
+Also, configure your **GitHub secrets** with `AZURE_CLIENT_ID_BACKEND` and `AZURE_SUBSCRIPTION_ID_BACKEND` set to your managed identity **Client ID** and the **Subscription ID** (for the backend) respectively.
+
+#### Setting Up Authentication for Terraform Cloud
+
+I recommend you create a new managed identity (from the one you use in the frontend) to align with security bests practices and least privilege, otherwise, you can [follow this steps](../frontend-resources/README.md#setting-up-authentication-for-terraform-cloud) to set this up on the **Terraform Cloud** workspace you are using to keep the backend state.
+
 ### Setting Up the GitHub Actions Workflow
 
+With our [terraform configuration in place](#setting-up-terraform) plus **GitHub** and **Terraform Cloud** (TFC) properly setup to [authenticate with Azure](#setting-up-authentication-for-automation-workflow) we can finally write the automation workflow that will bring everything together using [GitHub Actions](https://docs.github.com/en/actions/get-started/understand-github-actions).
+
+#### Setting Up the Workflow Directory
+
+First, you must create the `deploy-backend.yml` file under the `.github/workflows` directory (replace `/path/to/repo` with your actual repo's path):
+
+```sh
+cd /path/to/repo/.github/workflows
+touch deploy-backend.yml
+```
+
+Next, open the `deploy-backend.yml` file:
+
+```sh
+vim deploy-backend.yml
+```
+
+You can copy and paste the workflow from [my own implementation](../../.github/workflows/deploy-backend.yml). Just make sure to change values appropriately for `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE` to point to your own remote state in TFC (these probably are the same values you used when setting up [terraform locally](../frontend-resources/README.md#setting-up-terraform-cli-with-remote-state) with the workspace where you keep the backend infrastructure).
+
+#### Workflows Triggers
+
+```sh
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '**.gitignore'
+      - 'azure/frontend-resources/**'
+      - '.github/workflows/deploy-frontend.yml'
+      - 'azure/backend-resources/images/**'
+```
+
+#### Deploying  Backend Resources
+
+```sh
+deploy_resources:
+    env:
+      TF_CLOUD_ORGANIZATION: azure-terraform-labs
+      TF_WORKSPACE: azure-cloud-resume-challenge-backend-prod
+      TF_API_TOKEN: "${{ secrets.TF_API_TOKEN_BACKEND }}"
+      CONFIG_DIRECTORY: "./azure/backend-resources"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Upload Configuration
+        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+        id: apply-upload
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          directory: ${{ env.CONFIG_DIRECTORY }}
+
+      - name: Create Apply Run
+        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+        id: apply-run
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
+
+      - name: Apply
+        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
+        if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
+        id: apply
+        with:
+          run: ${{ steps.apply-run.outputs.run_id }}
+          comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
+```
+
 #### Executing the `create-entity-module` app
+
+```sh
+create_visitor_counter_entity:
+    needs: deploy_resources
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+              
+      - name: Azure Login using Managed Identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_BACKEND }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
+
+      - name: Create temporary data plane role assignment for entity creation
+        env:
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
+          PRINCIPAL_ID: ${{ secrets.AZURE_PRINCIPAL_ID }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
+          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
+          ROLE_ASSIGNMENT_ID: ${{ vars.COSMOS_DB_ROLE_ASSIGNMENT_ID }}
+          ROLE_DEFINITION_ID: "00000000-0000-0000-0000-000000000002" # Cosmos DB Built-in Data Contributor
+          
+        run: |
+          az cosmosdb sql role assignment create \
+            --role-assignment-id ${{ env.ROLE_ASSIGNMENT_ID }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --account-name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
+            --principal-id ${{ env.PRINCIPAL_ID }} \
+            --role-definition-id ${{ env.ROLE_DEFINITION_ID }} \
+            --scope "/subscriptions/${{ env.SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.DocumentDB/databaseAccounts/${{ env.COSMOS_DB_ACCOUNT_NAME }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install create-entity-module requirements
+        run: pip install -r ./azure/backend-resources/create-entity-module/requirements.txt
+
+      - name: Run create_entity.py to create Cosmos DB entity
+        env:
+          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
+          COSMOS_DB_TABLE_NAME: ${{ vars.COSMOS_DB_TABLE_NAME }}
+          COSMOS_DB_PARTITION_KEY: ${{ vars.COSMOS_DB_PARTITION_KEY }}
+          COSMOS_DB_ROW_KEY: ${{ vars.COSMOS_DB_ROW_KEY }}
+        run: python ./azure/backend-resources/create-entity-module/create_entity.py
+
+      - name: Remove temporary role assignment
+        if: always()
+        env:
+          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
+          ROLE_ASSIGNMENT_ID: ${{ vars.COSMOS_DB_ROLE_ASSIGNMENT_ID }}
+        run: |
+          az cosmosdb sql role assignment delete \
+            --role-assignment-id ${{ env.ROLE_ASSIGNMENT_ID }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --account-name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
+            --yes
+```
+
+#### Upload and Setup the Visitor Counter API
+
+```sh
+setup_visitor_counter_api:
+    needs: deploy_resources
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+              
+      - name: Azure Login using Managed Identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_BACKEND }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
+
+      - name: Deploy visitor counter API files
+        env:
+          FUNCTION_NAME: ${{ vars.AZURE_FUNCTION_NAME }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
+
+        run: |
+          az functionapp deployment source config-zip \
+            --name ${{ env.FUNCTION_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --src ./azure/backend-resources/visitor-counter/visitor-counter.zip \
+            --build-remote true
+```
 
 ## Setting Up Monitoring and Notifications
 
