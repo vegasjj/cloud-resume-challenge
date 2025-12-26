@@ -534,6 +534,8 @@ on:
       - 'azure/backend-resources/images/**'
 ```
 
+This workflow only triggers every time there is a push to the main branch, however, it will ignore changes to markdown files, .gitignore files, the `azure/frontend-resources` directory, the `deploy-frontend.yml` workflow, and the `images` directory in `azure/backend-resources`.
+
 #### Deploying  Backend Resources
 
 ```sh
@@ -571,6 +573,10 @@ deploy_resources:
           run: ${{ steps.apply-run.outputs.run_id }}
           comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
 ```
+
+- The `deploy_resources` job makes use of the `hashicorp/tfc-workflows-github` action to upload the terraform configuration to TFC and apply if necessary, so any `terraform plan` or `terraform apply` commands are abstracted away.
+- Note the `TF_API_TOKEN_BACKEND` secret must be added using **GitHub secrets** as is different from the one used in the [frontend's workflow](../../.github/workflows/deploy-frontend.yml) to align with security best practices and least privilege.
+- Logically, this workflow uses the **Terraform** configuration stored in the [`azure/backend-resources`](../backend-resources/) directory.
 
 #### Executing the `create-entity-module` app
 
@@ -642,6 +648,13 @@ create_visitor_counter_entity:
             --yes
 ```
 
+- The `create_visitor_counter_entity` job is tasked with executing the [`create-entity-module`](#setting-up-the-entity) **Python** app to create and initialize the **visitor_counter** entity in the database.
+- The `azure/login` action is used to authenticate with Azure using **OIDC** and the managed identity [you setup earlier](#setting-up-authentication-for-github-actions).
+- The `Create temporary data plane role assignment for entity creation` assigns temporary privileges to the managed identity so it can access the **Cosmos DB for Table** database's data plane  (using the `Cosmos DB Built-in Data Contributor` role).
+- [`create_entity.py`](./create-entity-module/create_entity.py) is ran using the environment variables required to point to the database and using the temporary privileges assigned to the managed identity.
+- The `Remove temporary role assignment` deletes the temporary role assignment to the managed identity. Note `if: always()` makes sure the step always run even if an error interrupts the workflow.
+- In order to identify and delete the temporary role assignment you must set `COSMOS_DB_ROLE_ASSIGNMENT_ID` to any value that meet your needs (for instance `6f26a8d5-45ad-31f7-0751-c4d865ab8091`).
+
 #### Upload and Setup the Visitor Counter API
 
 ```sh
@@ -675,6 +688,10 @@ setup_visitor_counter_api:
             --src ./azure/backend-resources/visitor-counter/visitor-counter.zip \
             --build-remote true
 ```
+
+- The `setup_visitor_counter_api` is in charge or uploading and deploying the **visitor counter API** (using the [function you setup earlier](#setting-up-the-azure-function)) to the [function app already configured](#the-function-app).
+- The `azure/login` action is used to authenticate with Azure using **OIDC** and the managed identity [you setup earlier](#setting-up-authentication-for-github-actions).
+- The `Deploy visitor counter API files` step uses the [`az functionapp deployment source config-zip`](https://learn.microsoft.com/en-us/cli/azure/functionapp/deployment/source?view=azure-cli-latest#az-functionapp-deployment-source-config-zip) command under the managed identity privileges to upload and setup the **visitor counter API** as an Azure function.
 
 ## Setting Up Monitoring and Notifications
 
