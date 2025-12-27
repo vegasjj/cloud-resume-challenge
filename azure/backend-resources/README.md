@@ -66,7 +66,7 @@ To set up the API we will need:
 - A storage account to keep the API files and support temporary storage for the function app's deployments.
 - A cosmos db account (using the table API) to act as the database.
 
-All of this resources are declared in the [`main.tf`](./main.tf) file for the backend resources and you can just copy and paste my code (which I will explain in detail bellow).
+All of these resources are declared in the [`main.tf`](./main.tf) file for the backend resources and you can just copy and paste my code (which I will explain in detail below).
 
 ### Setting Up Compute and Storage
 
@@ -705,6 +705,178 @@ To set up monitoring and notifications we will need:
 - An action group which will be used if a alert rule is triggered sending the alert details to the subscription's owners emails and to a logic app for integrations with a Slack channel.
 - A logic app to configure a workflow that will receive the raw body of a triggered alert rule and will process it to be sent to a Slack channel (which must be created before hand) as a push notification.
 - An API connection instance to manage the authentication with the Slack channel of your choosing.
+
+All of these resources are declared in the [`main.tf`](./main.tf) file for the backend resources and you can just copy and paste my code (which I will explain in detail below).
+
+### Setting Up Logs and Metrics
+
+Logs and metrics belonging to the **Azure function** (containing the **visitor counter API**) itself are manged from the an instance of [application insights](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) (part of [Azure Monitor](https://learn.microsoft.com/en-us/azure/azure-monitor/fundamentals/overview)).
+
+Before proceeding, you need to setup a [Log Analytics Workspace](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-analytics-workspace-overview) which will be used by the **application insights** instance to store and query the logs and metrics.
+
+#### The Log Analytics Workspace
+
+```sh
+resource "azurerm_log_analytics_workspace" "law" {
+  name                          = var.log_analytics_name
+  location                      = var.location
+  resource_group_name           = azurerm_resource_group.rg.name
+  sku                           = "PerGB2018"
+  retention_in_days             = 30
+}
+```
+
+- The `PerGB2018` SKU ([Pay-As-You-Go](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/change-pricing-tier?tabs=azure-resource-manager)) is used as is the most cost-effective for our needs.
+- Retention is set to 30 days (the minimum possible value).
+
+#### The Application Insights Instance
+
+```sh
+resource "azurerm_application_insights" "ai" {
+  name                = var.application_insights_name
+  location            = var.location
+  resource_group_name = azurerm_resource_group.rg.name
+  workspace_id        = azurerm_log_analytics_workspace.law.id
+  application_type    = "web"
+}
+```
+
+- The **application insights** instance is configured with the **log analytics workspace** [you setup earlier](#the-log-analytics-workspace) using the `workspace_id` argument.
+
+### Setting Up Alert Rules
+
+[Alert rules](https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-create-metric-alert-rule) will be configured pointing to the **function app** and the **applications insights instance** (to monitor the **visitor counter API** directly) accordingly, however, you need to configure an [action group](https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/action-groups) first to [trigger notifications](#setting-up-notifications).
+
+#### The Action Group
+
+```sh
+resource "azurerm_monitor_action_group" "alert_notifications" {
+  name                = "alert-notifications"
+  resource_group_name = azurerm_resource_group.rg.name
+  short_name          = "Alert Sender"
+  arm_role_receiver {
+    name    = "Owner Notifications"
+    role_id = "8e3af657-a8ff-443c-a75c-2fe8c4bcb635"
+  }
+  # Cannot commit to repository until a safe way to reference the PagerDuty integration URL is implemented
+  # webhook_receiver {
+  #   name                    = "PagerDuty alert integration"
+  #   service_uri             = "<pagerduty service uri>"
+  #   use_common_alert_schema = true
+  # }
+  webhook_receiver {
+    name                    = "Slack alert channel"
+    service_uri             = "${azurerm_logic_app_trigger_http_request.workflow_trigger.callback_url}"
+    use_common_alert_schema = true
+  }
+}
+```
+
+- An action is set to send a notification to the subscription owners using (the `8e3af657-a8ff-443c-a75c-2fe8c4bcb635` identifier) in the `arm_role_receiver` block.
+- The commented block should be used to send a callback to the [PagerDuty](https://www.pagerduty.com/) service once a secure way to declare the integration key using IaC is implemented.
+- A callback named `Slack alert channel` is sent to a **logic app workflow** so it can be processed as a push notification in a **Slack channel** ([more on this bellow](#setting-up-the-logic-app-workflow))
+
+#### The Average Failure Count Alert
+
+```sh
+resource "azurerm_monitor_metric_alert" "metric_1" {
+  enabled             = true
+  name                = "Average failure count exceeded"
+  resource_group_name = azurerm_resource_group.rg.name
+  scopes              = [azurerm_application_insights.ai.id]
+  severity            = 1
+  description         = "Action will be triggered when average failure count is greater than 5 for the visitor counter."
+  frequency           = "PT1M"
+  window_size         = "PT5M"
+  
+  criteria {
+    aggregation            = "Average"
+    metric_name            = "${var.function_name} Failures"
+    metric_namespace       = "Azure.ApplicationInsights"
+    operator               = "GreaterThan"
+    threshold              = 5
+    skip_metric_validation = true
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.alert_notifications.id
+  }
+}
+```
+
+- This rules triggers when the average failure count is greater than 5 in a timeframe of 5 minutes.
+- As this is custom metric configured in the **application insights** instance, you need to set [`skip_metric_validation`](https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-troubleshoot-metric#you-want-to-configure-an-alert-rule-on-a-custom-metric-that-isnt-emitted-yet) to `true`, otherwise, deployment will fail with a `"Couldn't find a metric name"` error because it takes some time before the rule is emitted on the Azure platform.
+- The `action` block is used so when this rules triggers it can send notifications to the **action group** [from earlier](#the-action-group).
+
+#### The Unusual Invocation Number Rule
+
+```sh
+resource "azurerm_monitor_metric_alert" "metric_2" {
+  enabled             = true
+  name                = "Unusual invocation number"
+  resource_group_name = azurerm_resource_group.rg.name
+  scopes              = [azurerm_function_app_flex_consumption.func.id]
+  severity            = 2
+  description         = "Action will be triggered when Execution count is greater than 50."
+  frequency           = "PT1M"
+  window_size         = "PT5M"
+
+
+  criteria {
+    aggregation      = "Total"
+    metric_name      = "OnDemandFunctionExecutionCount"
+    metric_namespace = "Microsoft.Web/sites"
+    operator         = "GreaterThan"
+    threshold        = 50
+  }
+  
+  action {
+    action_group_id = azurerm_monitor_action_group.alert_notifications.id
+  }
+}
+```
+
+- This rules triggers when the execution count is greater than 50 in a timeframe of 5 minutes.
+- As this is a built-in metric pointed to the **function app**, the [`skip_metric_validation`](https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-troubleshoot-metric#you-want-to-configure-an-alert-rule-on-a-custom-metric-that-isnt-emitted-yet) argument is not necessary.
+- The `action` block is used so when this rules triggers it can send notifications to the **action group** [from earlier](#the-action-group).
+
+#### The Unusual Average Duration Rule
+
+```sh
+resource "azurerm_monitor_metric_alert" "metric_3" {
+  enabled             = true
+  name                = "Unusual average duration"
+  resource_group_name = azurerm_resource_group.rg.name
+  scopes              = [azurerm_application_insights.ai.id]
+  severity            = 3
+  description         = "Action will be triggered when average duration is greater than 1000ms for the visitor counter."
+  frequency           = "PT1M"
+  window_size         = "PT5M"
+
+  criteria {
+    aggregation            = "Average"
+    metric_name            = "${var.function_name} AvgDurationMs"
+    metric_namespace       = "Azure.ApplicationInsights"
+    operator               = "GreaterThan"
+    threshold              = 1000
+    skip_metric_validation = true
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.alert_notifications.id
+  }
+}
+```
+
+- This rules triggers when the average duration is greater than 1000ms (to account for cold starts) in a timeframe of 5 minutes.
+- As this is custom rule configured in the **application insights** instance, you need to set [`skip_metric_validation`](https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-troubleshoot-metric#you-want-to-configure-an-alert-rule-on-a-custom-metric-that-isnt-emitted-yet) to `true`, otherwise, deployment will fail with a `"Couldn't find a metric name"` error because it takes some time before the rule is emitted on the Azure platform.
+- The `action` block is used so when this rules triggers it can send notifications to the **action group** [from earlier](#the-action-group).
+
+### Setting Up Notifications
+
+#### Setting Up the Logic App Workflow
+
+### Post Deployment Steps
 
 ![image depicting an authentication error in a logics app workflow with the slack api](./images/slack-channel-authentication.png)
 
