@@ -70,6 +70,6 @@ variable "function_name" {
 
 variable "slack_channel_name" {
   description = "The name of the Slack channel for alerts"
+  default     = "#counter-function-alerts"
   type        = string
-  default     = "counter-function-alerts"
 }

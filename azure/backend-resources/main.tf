@@ -271,7 +271,7 @@ resource "azurerm_logic_app_action_custom" "slack_message" {
       method = "post"
       path   = "/chat.postMessage"
       queries = {
-        channel = "#counter-function-alerts"
+        channel = "${var.slack_channel_name}"
         text    = "Azure Alert - '@{triggerBody()['data']['essentials']['alertRule']}' is @{triggerBody()['data']['essentials']['monitorCondition']}. Severity: @{triggerBody()['data']['essentials']['severity']}. Fired at: @{triggerBody()['data']['essentials']['firedDateTime']}. Details: @{concat('https://ms.portal.azure.com/#blade/Microsoft_Azure_Monitoring/AlertDetailsTemplateBlade/alertId/', uriComponent(triggerBody()['data']['essentials']['alertId']))}"
       }
     }
