@@ -874,12 +874,186 @@ resource "azurerm_monitor_metric_alert" "metric_3" {
 
 ### Setting Up Notifications
 
+Even if we configured an [action group](#the-action-group) to send notifications to the subscription's owners emails, we need a way to make notifications a more immediate process.
+
+One way is to setup a service like [PagerDuty](https://www.pagerduty.com/), but we could also use a dedicated medium like a [slack channel](https://slack.com/features/channels). To sep this up we need to process the raw body of the alert (which is sent by the **action group**) with a [Logic App](https://learn.microsoft.com/en-us/azure/logic-apps/logic-apps-overview) workflow, so we can automate the integration between **Azure Monitor** and **Slack**.
+
+#### Prerequisites for Slack Integration
+
+Before setting up the Slack [API Connection](#the-slack-api-connection), ensure you have:
+
+- A Slack workspace where you have admin privileges
+- A dedicated channel (e.g., `#counter-function-alerts`) created in your workspace
+- The ability to authorize Azure with your Slack workspace via OAuth
+
+#### The Slack API Connection
+
+```sh
+data "azurerm_managed_api" "api_data" {
+  name     = "slack"
+  location = azurerm_resource_group.rg.location
+}
+
+# API Connection must be manually authenticated with Slack OAuth in Azure Portal
+# See the post deployment steps at the end of this section
+resource "azurerm_api_connection" "api_connection" {
+  name                = "SlackConnection"
+  resource_group_name = azurerm_resource_group.rg.name
+  managed_api_id      = data.azurerm_managed_api.api_data.id
+  display_name        = "Slack API Connection"
+}
+```
+
+- A **data source** is used setup the **Slack** managed API that will be use by the **logic app** workflow.
+- An **API connection** called `SlackConnection` is configured with the **Slack** managed API using the `managed_api_id` argument.
+- Authentication between Azure and  **Slack** cannot be automated using this specific implementation, which is why it is required to make this configuration manually [after deployment](#post-deployment-steps).
+
 #### Setting Up the Logic App Workflow
+
+```sh
+resource "azurerm_logic_app_workflow" "alert_workflow" {
+  name     = "slack-channel-integration"
+  location = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  parameters = {
+    "$connections" = "{\"slack\":{\"connectionId\":\"${azurerm_api_connection.api_connection.id}\",\"id\":\"${azurerm_api_connection.api_connection.managed_api_id}\"}}"
+  }
+  workflow_parameters = {
+    "$connections" = "{\"defaultValue\":{},\"type\":\"Object\"}"
+  }
+}
+```
+
+- A **Logic App** workflow called `slack-channel-integration` is configured to connect with the **Slack** API using the `parameters` block and the **API connection** instance you [configured above](#the-slack-api-connection).
+
+#### Setting Up the Logic App Trigger
+
+```sh
+resource "azurerm_logic_app_trigger_http_request" "workflow_trigger" {
+  name         = "azure-monitor-trigger"
+  logic_app_id = azurerm_logic_app_workflow.alert_workflow.id
+
+  schema = jsonencode({
+    "$schema" = "http://json-schema.org/draft-04/schema#"
+    properties = {
+      data = {
+        properties = {
+          essentials = {
+            properties = {
+              alertId = {
+                type = "string"
+              }
+              alertRule = {
+                type = "string"
+              }
+              firedDateTime = {
+                type = "string"
+              }
+              monitorCondition = {
+                type = "string"
+              }
+              severity = {
+                type = "string"
+              }
+            }
+            required = ["alertId", "alertRule", "severity", "monitorCondition", "firedDateTime"]
+            type     = "object"
+          }
+        }
+        required = ["essentials"]
+        type     = "object"
+      }
+    }
+    required = ["data"]
+    type     = "object"
+  })
+}
+```
+
+- A **Logic App trigger** called `azure-monitor-trigger` is integrated with the [`slack-channel-integration`](#setting-up-the-logic-app-workflow) workflow so it can handle the raw body of the **alert rules** sent by the [`alert-notifications`](#the-action-group) **action group**.
+- Only the fields `alertId`,`alertRule`,`severity`,`monitorCondition` and `firedDateTime` will be extracted from the alert rule's raw body using the `properties` block.
+
+#### Setting Up the Logic App Action
+
+```sh
+resource "azurerm_logic_app_action_custom" "slack_message" {
+  name         = "slack-channel-post"
+  logic_app_id = azurerm_logic_app_workflow.alert_workflow.id
+
+  body = jsonencode({
+    inputs = {
+      host = {
+        connection = {
+          name = "@parameters('$connections')['slack']['connectionId']"
+        }
+      }
+      method = "post"
+      path   = "/chat.postMessage"
+      queries = {
+        channel = "#counter-function-alerts"
+        text    = "Azure Alert - '@{triggerBody()['data']['essentials']['alertRule']}' is @{triggerBody()['data']['essentials']['monitorCondition']}. Severity: @{triggerBody()['data']['essentials']['severity']}. Fired at: @{triggerBody()['data']['essentials']['firedDateTime']}. Details: @{concat('https://ms.portal.azure.com/#blade/Microsoft_Azure_Monitoring/AlertDetailsTemplateBlade/alertId/', uriComponent(triggerBody()['data']['essentials']['alertId']))}"
+      }
+    }
+    type = "ApiConnection"
+  })
+}
+```
+
+- A **Logic App action** called `slack-channel-post` is integrated with the [`slack-channel-integration`](#setting-up-the-logic-app-workflow) workflow to send a push notification to a **Slack** channel called `counter-function-alerts`.
+- The `text` argument in the `queries` block is in charged to construct the message to be sent to the **Slack** channel using the data extracted from the [`azure-monitor-trigger`](#setting-up-the-logic-app-trigger) trigger.
+
+### Locally Testing Terraform Resources for Monitoring
+
+At this point, you can use the **Terraform CLI** locally to test your infrastructure configuration [following this instructions](../frontend-resources/README.md#locally-testing-your-terraform-configuration).
+
+If all goes well, your should see these eight resources on the [Azure Portal](https://portal.azure.com/):
+
+![Azure Portal dashboard showing the monitoring resources deployed with the terraform configuration](./images/backend-second-part.png)
+
+#### Unmanaged Autogenerated Alert Ruled
+
+When you deploy the **application insights** instance, an alert rule called `Failure Anomalies` is created by default. This behavior creates a few problems:
+
+- You now might have an unwanted resource unmanaged by your **Terraform** state file.
+- If you decide tear down your backend infrastructure you will get an `Resource Group still contains Resources` error (as this alert rule is not managed by your **Terraform** configuration) that will prevent you for a clean deletion.
+
+However, there is a workaround for this. You need to set your [`provider.tf`](./provider.tf) file with the following lines:
+
+```sh
+features {
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+     }
+
+    application_insights {
+      disable_generated_rule = true
+    }
+  }
+```
+
+- The `prevent_deletion_if_contains_resources` argument set to `false` allows for **Terraform** to ignore any hanging resources left when deleting the resource group so you can destroy your deployment cleanly.
+- The `disable_generated_rule` argument set to `false` disables the autogenerated rule (if you don't want it). The only caveat is that it delays the deployment time by a few minutes because **Terraform** needs to wait for the rule to be created (this doesn't happen instantly).
 
 ### Post Deployment Steps
 
+Once all resources are deployed correctly, you need to set the authentication between Azure and Slack manually.
+
 ![image depicting an authentication error in a logics app workflow with the slack api](./images/slack-channel-authentication.png)
+
+As you can see above, the [`slack-channel-integration`](#setting-up-the-logic-app-workflow) workflow is in a state of `Invalid connection` when trying to authenticate the [`slack-channel-post`](#setting-up-the-logic-app-action) action with **Slack**.
+
+The solution for this is to go to the [Azure portal](https://portal.azure.com), search for the [`SlackConnection`](#the-slack-api-connection) **API connection** resource and proceed to authorize it with your **Slack** workspace as showed below:
 
 ![Slack API authorization configuration](./images/slack-api-authorization.png)
 
+Make sure to hit the `Save` button after the authentication is successful.
+
+### Notifications Demo
+
+After monitoring and notifications are setup using the **Logic App** workflow you will receive alerts in your **Slack** channel every time your **alert rules** are triggered:
+
 ![Slack channel alert notification](./images/slack-channel-alert.png)
+
+Also, subscription owners will receive email notifications:
+
+![mail notification for subscription owners](./images/subscription-owner-notifications.png)
