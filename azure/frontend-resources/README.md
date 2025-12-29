@@ -6,6 +6,25 @@ The following Azure resources directly serve the static site's files, set up the
 - An Azure CDN Profile.
 - An Azure CDN Endpoint.
 
+## Summary
+
+- [Local Development Environment details](#local-development-environment-details)
+  - [Setting up Azure CLI](#setting-up-azure-cli)
+  - [Setting Up Terraform](#setting-up-terraform)
+    - [Installing Terraform CLI](#installing-terraform-cli)
+    - [Setting Up Terraform CLI with Local State](#setting-up-terraform-cli-with-local-state)
+    - [Setting Up Terraform CLI with Remote State](#setting-up-terraform-cli-with-remote-state)
+    - [Setting Up Terraform Files](#setting-up-terraform-files)
+- [Azure Infrastructure Key Considerations](#azure-infrastructure-key-considerations)
+- [Locally Testing Your Terraform Configuration](#locally-testing-your-terraform-configuration)
+- [Setting Up Authentication for Automation Workflow](#setting-up-authentication-for-automation-workflow)
+  - [Setting Up Azure Identities](#setting-up-azure-identities)
+    - [Setting Up Authentication for GitHub Actions](#setting-up-authentication-for-github-actions)
+    - [Setting Up Authentication for Terraform Cloud](#setting-up-authentication-for-terraform-cloud)
+- [Setting up the GitHub Actions Workflow](#setting-up-the-github-actions-workflow)
+  - [Setting Up the Workflow Directory](#setting-up-the-workflow-directory)
+  - [Workflow's Key Considerations](#workflows-key-considerations)
+
 ## Local Development Environment details
 
 The following tools need to be installed to support local development:
@@ -131,7 +150,7 @@ When we are ready to automate our deployment we will be saving the Azure terrafo
 
 To achieve this, you first need to create an account on [Terraform Cloud](https://app.terraform.io/session) and then set up an [organization](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations#creating-organizations) and a [workspace](https://developer.hashicorp.com/terraform/cloud-docs/workspaces) where you would be able to manage your state, access settings, jobs, etc.
 
-In order to login to **Terraform Cloud** I recommend you create a [team API token](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/api-tokens#team-api-tokens) as this will scope access to the a specific organization and not to the entire account (which is the behavior when you use a [user token](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/api-tokens#team-api-tokens) belonging to the account owner).
+In order to login to **Terraform Cloud** I recommend you create a [team API token](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/api-tokens#team-api-tokens) as this will scope access to the a specific organization and not to the entire account (which is the behavior when you use a [user token](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/api-tokens#user-api-tokens) belonging to the account owner).
 
 When you have all this in place, you could login locally to **Terraform Cloud** running `terraform login` and following that workflow, which will prompt you to create a token, but as you already created it you can set it up directly. Make sure you are in your home directory:
 
@@ -213,7 +232,7 @@ again to reinitialize your working directory.
 
 If you see it, it means that the **Terraform CLI** has been authenticated with your workspace on **Terraform Cloud** but you won't be able to run `terraform plan` and `terraform apply` commands for local testing until you set the environment variables to authenticate with Azure in your workspace's settings. You will see the terraform logs from your terminal but the jobs will be executing remotely and your state will be saved on **Terraform Cloud** as well.
 
-Also, a [.terraform.lock.hcl](.terraform.lock.hcl) will be created on your base directory to ensure the required version of the provider is locked. You will need to run `terraform init -upgrade` every time you modify the provider version otherwise you will see a `Failed to query available provider packages` error:
+Also, a [`.terraform.lock.hcl`](.terraform.lock.hcl) will be created on your base directory to ensure the required version of the provider is locked. You will need to run `terraform init -upgrade` every time you modify the provider version otherwise you will see a `Failed to query available provider packages` error:
 
 ```sh
 Waiting for the plan to start...
@@ -239,11 +258,11 @@ Initializing provider plugins...
 Operation failed: failed running terraform init (exit 1)
 ```
 
-As you can see above, [terraform.tf](./terraform.tf) was modified to work with `azurerm 4.55.0` but [.terraform.lock.hcl](.terraform.lock.hcl) hasn't been upgraded from `azurerm 4.52.0`.
+As you can see above, [`terraform.tf`](./terraform.tf) was modified to work with `azurerm 4.55.0` but [`.terraform.lock.hcl`](.terraform.lock.hcl) hasn't been upgraded from `azurerm 4.52.0`.
 
-Make sure to match the required terraform version on [terraform.tf](./terraform.tf) with the one configured on your **Terraform Cloud** workspace's settings:
+Make sure to match the required terraform version on [`terraform.tf`](./terraform.tf) with the one configured on your **Terraform Cloud** workspace's settings:
 
-![](./images/required-terraform-version.png)
+![Reference of Terraform version selection in Terraform Cloud settings](./images/required-terraform-version.png)
 
 If you don't, you may receive an `Unsupported Terraform Core version` error like this one:
 
@@ -268,7 +287,7 @@ Initializing HCP Terraform...
 Operation failed: failed running terraform init (exit 1)
 ```
 
-As you can see above, the workspace is configured to run version `1.14.0` while the [terraform.tf](./terraform.tf) file was expecting version `1.14.1`
+As you can see above, the workspace is configured to run version `1.14.0` while the [`terraform.tf`](./terraform.tf) file was expecting version `1.14.1`
 
 #### Setting Up Terraform Files
 
@@ -370,10 +389,10 @@ You can [use these instructions](https://learn.microsoft.com/en-us/azure/develop
 
 In short you need to:
 
-- Create a **user-assigned managed identity** by running the [`az identity create`](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/manage-user-assigned-managed-identities-azure-cli) command.
+- Create a **user-assigned managed identity** by running the [`az identity create`](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/manage-user-assigned-managed-identities-azure-cli#create-a-user-assigned-managed-identity) command.
 - Configure the managed identity with the appropriate roles on the subscription of your choice. I recommend you only set the `
 CDN Endpoint Contributor` role and the `Storage Blob Data Contributor` role for this identity ([see reference image](./images/managed-identity-assigment-1.png)) as this workflow only need access to upload blobs and purge the CDN endpoint (the resources will be deployed from **Terraform Cloud** which will have its own identity).
-- Configure the identity to trust and external identity provider (in this case GitHub) using the [`az identity federated-credential create`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential#az-identity-federated-credential-create) command and providing values for [`--subject`](https://docs.github.com/en/actions/reference/security/oidc#filtering-for-a-specific-branch), [`--audiences`](https://docs.github.com/en/actions/reference/security/oidc#customizing-the-audience-value) and [`--issuer`](https://docs.github.com/en/actions/reference/security/oidc#standard-audience-issuer-and-subject-claims). You can check the federated credential configuration using the [`az identity federated-credential list`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential?view=azure-cli-latest#az-identity-federated-credential-listx) command or alternatively in the identity's settings using the [Azure Portal](https://portal.azure.com/) ([see reference image](./images/federated-managed-identity-1.png)).
+- Configure the identity to trust and external identity provider (in this case GitHub) using the [`az identity federated-credential create`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential#az-identity-federated-credential-create) command and providing values for [`--subject`](https://docs.github.com/en/actions/reference/security/oidc#filtering-for-a-specific-branch), [`--audiences`](https://docs.github.com/en/actions/reference/security/oidc#customizing-the-audience-value) and [`--issuer`](https://docs.github.com/en/actions/reference/security/oidc#standard-audience-issuer-and-subject-claims). You can check the federated credential configuration using the [`az identity federated-credential list`](https://learn.microsoft.com/en-us/cli/azure/identity/federated-credential?view=azure-cli-latest#az-identity-federated-credential-list) command or alternatively in the identity's settings using the [Azure Portal](https://portal.azure.com/) ([see reference image](./images/federated-managed-identity-1.png)).
 - Configure [GitHub Secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) on your project's repository with the names `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. As values you must use your identity's **Client ID**, **Tenant ID** and **Subscription ID** respectively ([see reference image](./images/github-actions-secrets.png))
 
 With this steps completed, the **GitGub Actions** workflows (executed from your project's repository) will be able to request ephemeral tokens to Azure. This tokens will be valid only for the duration of the job and scoped for the selected subscription and Azure RBAC Roles.
@@ -418,7 +437,7 @@ Next, open the `deploy-frontend.yml` file:
 vim deploy-frontend.yml
 ```
 
-You can copy and paste the workflow from [my own implementation](./../.github/workflows/deploy-frontend.yml). Just make sure to change values appropriately for `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE` to point to your own remote state in TFC (these probably are the same values you used when setting up [terraform locally](#setting-up-terraform-cli-with-remote-state)).
+You can copy and paste the workflow from [my own implementation](../../.github/workflows/deploy-frontend.yml). Just make sure to change values appropriately for `TF_CLOUD_ORGANIZATION` and `TF_WORKSPACE` to point to your own remote state in TFC (these probably are the same values you used when setting up [terraform locally](#setting-up-terraform-cli-with-remote-state)).
 
 ### Workflow's Key Considerations
 
@@ -429,5 +448,5 @@ You can copy and paste the workflow from [my own implementation](./../.github/wo
 - The `id-token: write` permission is necessary for the `setup_resume_files` to request the OIDC token to Azure.
 - The `azure/login@v2` action makes possible the authentication with Azure using the OIDC protocol. The secrets you setup earlier (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`) need to be referenced here.
 - The names of the Azure resources (like the storage account or the CDN profile) can be passed as variables as this aren't sensitive values ([see reference image](./images/github-actions-variables.png).)
-- The `Upload static site files to Azure Storage` step uses the [resume's directory](../frontend/resume/) to upload the necessary files to the `$web` container where they will be serve as a static site.
+- The `Upload static site files to Azure Storage` step uses the [resume's directory](../../frontend/resume/) to upload the necessary files to the `$web` container where they will be serve as a static site.
 - The `Purge CDN endpoint` step is tasked with [the purge of the CDN endpoint's cache](https://learn.microsoft.com/en-us/azure/cdn/cdn-purge-endpoint) every time there is a change to the resume files so the clients receive the latest version as soon as possible.
