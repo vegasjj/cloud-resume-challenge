@@ -2,6 +2,14 @@
 
 This is a static website serving an HTML resume with a visitor counter.
 
+## Summary
+
+- [Resume Format Considerations](#resume-format-considerations)
+  - [Resume Format Generation](#resume-format-generation)
+- [HTML and CSS Adjustments](#html-and-css-adjustments)
+- [Local Webserver Details](#local-webserver-details)
+- [Frontend Framework Considerations](#frontend-framework-considerations)
+
 ## Resume Format Considerations
 
 I'm choosing to use the [Harvard Resume Template format](https://cdn-careerservices.fas.harvard.edu/wp-content/uploads/sites/161/2025/09/2025-template_bullet.docx).
@@ -12,7 +20,7 @@ Even as I live in Venezuela and this format is not very well known in the countr
 
 I know HTML and CSS a bit but I'm not going to code the resume from scratch. Instead I'm going to use a template with a close approximation the Harvard Resume format and modify it to my own taste. You can [access the original template here](https://github.com/stypr/resume-template).
 
-This is how the finished version of my resume looks like: ![](./resume/docs/images/resume-screeshot.jpeg).
+This is how the finished version of my resume looks like: ![Resume page reference](./resume/docs/images/resume-screeshot.jpeg).
 
 ## HTML and CSS Adjustments
 
