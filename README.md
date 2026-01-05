@@ -3,6 +3,16 @@
 Welcome to my repository for the Cloud Resume Challenge Bootcamp (Q4 2025) organized by ExamPro.
 Here you’ll find **Terraform** files, **GitHub Actions** workflows, **Python** applications, diagrams, resume's website files and complete documentations to setup and deploy a working Cloud Resume Challenge using different cloud providers (only the Azure version is available for now).
 
+## Diagrams
+
+### Azure Backend Architecture
+
+![Azure Backend Architecture](./azure/backend-resources/images/backend-resources-architecture.png)
+
+If you need to make changes to these diagrams, you can download an editable copy for the [backend](./azure/backend-resources/images/backend-resources-architecture.drawio) and the [frontend](./azure/frontend-resources/images/placeholder.drawio) respectively. You'll need to use **draw.io** to open the files, there's a [web version](https://app.diagrams.net/) and an [offline version](https://www.drawio.com/) of this software (no registration is required to use it).
+
+For implementation steps [go to the Azure section](#️-sections)
+
 ## 🗒️ Sections
 
 - [Frontend Technical Specifications](./frontend/README.md)
