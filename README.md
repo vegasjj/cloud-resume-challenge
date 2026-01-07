@@ -5,11 +5,15 @@ Here you’ll find **Terraform** files, **GitHub Actions** workflows, **Python**
 
 ## Diagrams
 
+### Azure Frontend Architecture
+
+![Azure Frontend Architecture](./azure/frontend-resources/images/frontend-resources-architecture.png)
+
 ### Azure Backend Architecture
 
 ![Azure Backend Architecture](./azure/backend-resources/images/backend-resources-architecture.png)
 
-If you need to make changes to these diagrams, you can download an editable copy for the [backend](./azure/backend-resources/images/backend-resources-architecture.drawio) and the [frontend](./azure/frontend-resources/images/placeholder.drawio) respectively. You'll need to use **draw.io** to open the files, there's a [web version](https://app.diagrams.net/) and an [offline version](https://www.drawio.com/) of this software (no registration is required to use it).
+If you need to make changes to these diagrams, you can download an editable copy for the [backend](./azure/backend-resources/images/backend-resources-architecture.drawio) and the [frontend](./azure/frontend-resources/images/frontend-resources-architecture.drawio) respectively. You'll need to use **draw.io** to open the files, there's a [web version](https://app.diagrams.net/) and an [offline version](https://www.drawio.com/) of this software (no registration is required to use it).
 
 For implementation steps [go to the Azure section](#️-sections)
 
@@ -26,50 +30,51 @@ For implementation steps [go to the Azure section](#️-sections)
 .
 ├── .github/
 │   └── workflows/
-│       ├── deploy-backend.yml
-│       └── deploy-frontend.yml
+│       ├── deploy-backend.yml          # Github Actions workflow to deploy backend resources
+│       └── deploy-frontend.yml         # Github Actions Workflow to deploy frontend resources
 ├── azure/
-│   ├── README.md
+│   ├── README.md                       # Table of contents for Azure docs
 │   ├── backend-resources/
 │   │   ├── .gitignore
 │   │   ├── .terraform.lock.hcl
-│   │   ├── README.md
+│   │   ├── README.md                   # Azure Backend deployment docs
 │   │   ├── create-entity-module/
-│   │   │   ├── create_entity.py
-│   │   │   └── requirements.txt
-│   │   ├── images/
-│   │   ├── main.tf
-│   │   ├── provider.tf
-│   │   ├── terraform.tf
-│   │   ├── variables.tf
+│   │   │   ├── create_entity.py        # Python app to create visitor_counter entity
+│   │   │   └── requirements.txt        # create_entity.py dependencies
+│   │   ├── images/                     # Images for Azure backend docs
+│   │   ├── main.tf                     # Main file to write terraform resources
+│   │   ├── provider.tf                 # Terraform provider settings
+│   │   ├── terraform.tf                # Terraform settings
+│   │   ├── variables.tf                # Terraform variables to be used in main.tf
 │   │   └── visitor-counter/
-│   │       ├── function_app.py
-│   │       ├── host.json
-│   │       └── requirements.txt
+│   │       ├── function_app.py         # Visitor Counter API 
+│   │       ├── host.json               # Azure Function settings
+│   │       ├── requirements.txt        # Visitor Counter API dependencies
+│   │       
+└── visitor-counter.zip     # Visitor counter API zipped artifact
 │   └── frontend-resources/
 │       ├── .gitignore
 │       ├── .terraform.lock.hcl
-│       ├── README.md
-│       ├── images/
-│       ├── main.tf
-│       ├── provider.tf
-│       ├── terraform.tf
-│       └── variables.tf
+│       ├── README.md                   # Azure frontend deployment docs
+│       ├── images/                     # Images for Azure frontend docs
+│       ├── main.tf                     # Main file to write terraform resources
+│       ├── provider.tf                 # Terraform provider settings
+│       ├── terraform.tf                # Terraform settings
+│       └── variables.tf                # Terraform variables to be used in main.tf
 ├── frontend/
-│   ├── README.md
+│   ├── README.md                       # Cloud Resume Challenge app docs
 │   └── resume/
-│       ├── index.html
+│       ├── index.html                  # Cloud Resume Challenge app
 │       ├── docs/
-│       │   └── images/
+│       │   └── images/                 # Cloud Resume Challenge app images for docs
 │       └── src/
-│           ├── images/
-│           │   └── (logo and certification images)
+│           ├── images/                 # Cloud Resume Challenge app images
 │           ├── styles/
-│           │   ├── styles.css
-│           │   └── fonts/
+│           │   ├── styles.css          # Cloud Resume Challenge app styling sheets
+│           │   └── fonts/              # Cloud Resume Challenge app fonts
 │           └── visitor-counter/
-│               └── visitor-counter.js
-├── README.md
+│               └── visitor-counter.js  # Visitor counter API integration
+├── README.md                           # ← You are here!
 └── .gitignore
 ```
 
