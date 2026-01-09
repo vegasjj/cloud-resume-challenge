@@ -51,7 +51,7 @@ For implementation steps [go to the Azure section](#️-sections)
 │   │       ├── host.json               # Azure Function settings
 │   │       ├── requirements.txt        # Visitor Counter API dependencies
 │   │       
-└── visitor-counter.zip     # Visitor counter API zipped artifact
+└── visitor-counter.zip                 # Visitor counter API zipped artifact
 │   └── frontend-resources/
 │       ├── .gitignore
 │       ├── .terraform.lock.hcl
