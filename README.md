@@ -3,7 +3,21 @@
 Welcome to my repository for the Cloud Resume Challenge Bootcamp (Q4 2025) organized by ExamPro.
 Here you’ll find **Terraform** files, **GitHub Actions** workflows, **Python** applications, diagrams, resume's website files and complete documentations to setup and deploy a working Cloud Resume Challenge using different cloud providers (only the Azure version is available for now).
 
-## Diagrams
+## 🥈 Recognition
+
+Awarded the **Captain Badge** for **Outstanding** performance in the bootcamp's final submission.
+
+<p align="center">
+<a href="https://app.exampro.co/validate/certificate/-YSmuilBw4xEuBFkxXQcKQ17211" target="_blank">
+    <img src="./azure/backend-resources/images/Cloud%20Resume%20Challenge%20Captain.svg" alt="Captain Badge" width="250">
+    </a>
+</p>
+
+## 🌐 Live Sites
+
+[resume.technicalmind.cloud](https://resume.technicalmind.cloud/) (Azure)
+
+## 🖼️ Diagrams
 
 ### Azure Frontend Architecture
 
