@@ -1,7 +1,7 @@
 # 🌥️ cloud-resume-challenge
 
 Welcome to my repository for the Cloud Resume Challenge Bootcamp (Q4 2025) organized by ExamPro.
-Here you’ll find **Terraform** files, **GitHub Actions** workflows, **Python** applications, diagrams, resume's website files and complete documentations to setup and deploy a working Cloud Resume Challenge using different cloud providers (only the Azure version is available for now).
+Here you’ll find **Terraform** files, **GitHub Actions** workflows, **Python** applications, diagrams, resume website files and complete documentations to setup and deploy a working Cloud Resume Challenge using different cloud providers (only the Azure version is available for now).
 
 ## 🥈 Recognition
 
