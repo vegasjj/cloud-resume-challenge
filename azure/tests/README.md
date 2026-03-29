@@ -2,7 +2,7 @@
 
 The test must run at the end of provisioning all services but there is an issue.
 
-There are not staging slots so production is affected before knowing if all validations checks are green.
+There are no staging slots so production is affected before knowing if all validation checks are green.
 
 One possible solution is deploying and immediately do a rollback if the test fails.
 
