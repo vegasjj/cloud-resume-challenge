@@ -1,12 +1,13 @@
 from playwright.sync_api import sync_playwright
 from azure.data.tables import TableServiceClient
-from azure.core.credentials import AzureNamedKeyCredential
-from dotenv import load_dotenv
+# from azure.core.credentials import AzureNamedKeyCredential
+from azure.identity import DefaultAzureCredential
+# from dotenv import load_dotenv
 import logging
 import os
 import pytest
 
-load_dotenv()
+# load_dotenv()
 
 def _require_env(name: str) -> str:
     value = os.getenv(name)
@@ -27,10 +28,10 @@ def test_api_counter():
         try:
 
             account_name  = _require_env("COSMOS_DB_ACCOUNT_NAME")
-            account_key   = _require_env("COSMOS_DB_ACCOUNT_KEY")
+            # account_key   = _require_env("COSMOS_DB_ACCOUNT_KEY")
             table_name    = _require_env("COSMOS_DB_TABLE_NAME")
-            partition_key = _require_env("PARTITION_KEY")
-            row_key       = _require_env("ROW_KEY")
+            partition_key = _require_env("COSMOS_DB_PARTITION_KEY")
+            row_key       = _require_env("COSMOS_DB_ROW_KEY")
             api_url       = _require_env("API_URL")
 
             try:
@@ -45,11 +46,17 @@ def test_api_counter():
             assert isinstance(response_data, dict), "API response is not a JSON object"
             assert VISITS_COUNTER_KEY in response_data, f"Response JSON does not contain '{VISITS_COUNTER_KEY}' key"
 
-            credential = AzureNamedKeyCredential(account_name, account_key)
-            endpoint = f"https://{account_name}.table.cosmos.azure.com:443/"
-            table_service_client = TableServiceClient(endpoint=endpoint, credential=credential)
+            credential = DefaultAzureCredential()
+            account_url = f"https://{account_name}.table.cosmos.azure.com:443"
+            table_service = TableServiceClient(endpoint=account_url, credential=credential)
+            # table_client = table_service.get_table_client(table_name=table_name)
 
-            with table_service_client.get_table_client(table_name=table_name) as table_client:
+
+            # credential = AzureNamedKeyCredential(account_name, account_key)
+            # endpoint = f"https://{account_name}.table.cosmos.azure.com:443/"
+            # table_service_client = TableServiceClient(endpoint=endpoint, credential=credential)
+
+            with table_service.get_table_client(table_name=table_name) as table_client:
                 try:
                     counter_entity = table_client.get_entity(partition_key=partition_key, row_key=row_key, timeout=TIMEOUT_S)
                 except Exception as e:

@@ -23,3 +23,12 @@ This is the most clean solution but it is necessary to account for name collisio
 - Retrieve last successful Git commit using the GitHub API for more reliability.
 - Deploy to production.
 - If test fails, redeploy last successful committed environment (downtime is incurred).
+
+## Test strategy
+
+Ensure test authenticates and run before implementing safeguards to production.
+
+Test on pushes before implementing pull request variant.
+
+Testing workflow must be configured to run on pull requests (recreating the "ghost" environment) every time
+to avoid merging errors and failed deployments to the main branch.
