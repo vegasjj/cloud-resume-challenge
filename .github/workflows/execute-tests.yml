@@ -23,7 +23,7 @@ jobs:
               
       - name: Azure Login using Managed Identity
         id:   azure-login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID_BACKEND }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
