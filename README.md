@@ -4,16 +4,6 @@ I designed and built a stateless web application in Azure backed by a NoSQL data
 
 Deployments are fully automated using Infrastructure as Code with remote state management, applied on every commit to the main branch. For quality control, each pull request spins up an ephemeral test environment where automated tests run before any merge, preventing regressions from reaching production.
 
-## 🥈 Recognition
-
-Awarded the **Captain Badge** for **Outstanding** performance in the bootcamp's final submission.
-
-<p align="center">
-<a href="https://app.exampro.co/validate/certificate/-YSmuilBw4xEuBFkxXQcKQ17211" target="_blank">
-    <img src="./azure/backend-resources/images/Cloud%20Resume%20Challenge%20Captain.svg" alt="Captain Badge" width="250">
-    </a>
-</p>
-
 ## 🌐 Live Sites
 
 [resume.technicalmind.cloud](https://resume.technicalmind.cloud/) (Azure)
@@ -38,6 +28,16 @@ For implementation steps [go to the Azure section](#️-sections)
 - [Azure Version for the Cloud Resume Challenge](./azure/README.md)
   - [Writing and Deploying the Cloud Resume Challenge's Frontend](./azure/frontend-resources/README.md)
   - [Writing and Deploying the Cloud Resume Challenge's Backend](./azure/backend-resources/README.md)
+
+## 🥈 Recognition
+
+Awarded the **Captain Badge** for **Outstanding** performance in the bootcamp's final submission.
+
+<p align="center">
+<a href="https://app.exampro.co/validate/certificate/-YSmuilBw4xEuBFkxXQcKQ17211" target="_blank">
+    <img src="./azure/backend-resources/images/Cloud%20Resume%20Challenge%20Captain.svg" alt="Captain Badge" width="250">
+    </a>
+</p>
 
 ## 🗂️ Repository Structure
 
