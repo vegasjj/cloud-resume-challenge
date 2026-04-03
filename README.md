@@ -1,7 +1,8 @@
 # 🌥️ cloud-resume-challenge
 
-Welcome to my repository for the Cloud Resume Challenge Bootcamp (Q4 2025) organized by ExamPro.
-Here you’ll find **Terraform** files, **GitHub Actions** workflows, **Python** applications, diagrams, resume website files and complete documentations to setup and deploy a working Cloud Resume Challenge using different cloud providers (only the Azure version is available for now).
+I designed and built a stateless web application in Azure backed by a NoSQL database and exposed through a Python REST API. To ensure reliability, I implemented a monitoring and alerting system that tracks API performance and triggers email/push notifications on anomalies.
+
+Deployments are fully automated using Infrastructure as Code with remote state management, applied on every commit to the main branch. For quality control, each pull request spins up an ephemeral test environment where automated tests run before any merge, preventing regressions from reaching production.
 
 ## 🥈 Recognition
 
