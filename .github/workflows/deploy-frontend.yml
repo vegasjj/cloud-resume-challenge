@@ -9,7 +9,9 @@ on:
       - '**.gitignore'
       - 'azure/frontend-resources/images/**'
       - '.github/workflows/deploy-backend.yml'
+      - '.github/workflows/execute-tests.yml'
       - 'azure/backend-resources/**'
+      - 'azure/tests/**'
 
 jobs:
   deploy_resources:
