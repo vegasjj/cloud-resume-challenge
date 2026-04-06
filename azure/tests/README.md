@@ -28,7 +28,9 @@ This is the most clean solution but it is necessary to account for name collisio
 
 Ensure test authenticates and run before implementing safeguards to production.
 
-Test on pushes before implementing pull request variant.
+Test on pushes before implementing pull request variant. (Success)
+Test response formatting and authentication separately from testing and comparing response and db values (Pending)
+Consider removal of poorly integrated tests (Pending)
 
 Testing workflow must be configured to run on pull requests (recreating the "ghost" environment) every time
 to avoid merging errors and failed deployments to the main branch.

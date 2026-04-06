@@ -8,6 +8,8 @@ on:
       - '**.md'
       - '**.gitignore'
       - '**/images/**'
+      - 'azure/frontend-resources/**'
+      - '.github/workflows/deploy-frontend.yml'
 
 jobs:
   run_tests:
@@ -80,4 +82,3 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --account-name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
             --yes
-
