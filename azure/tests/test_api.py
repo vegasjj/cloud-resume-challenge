@@ -16,7 +16,7 @@ TIMEOUT_MS = 30000  # milliseconds for Playwright
 TIMEOUT_S = TIMEOUT_MS // 1000  # seconds for Azure Table
 
 
-def fetch_visitor_counter(api_url: str, request_context: APIRequestContext) -> dict:
+def fetch_api_response(api_url: str, request_context: APIRequestContext) -> dict:
     response = request_context.get(api_url)
 
     assert response.status == 200, f"Expected status 200, got {response.status}"
@@ -48,7 +48,7 @@ def get_db_visitor_counter(account_name: str, table_name: str, partition_key: st
     return db_counter_value
 
 
-def test_api_counter():
+def test_visitor_counter_api():
     """
     Test that the API counter matches the value in the database.
     """
@@ -61,7 +61,7 @@ def test_api_counter():
             row_key = _require_env("COSMOS_DB_ROW_KEY")
             api_url = _require_env("API_URL")
 
-            response_data = fetch_visitor_counter(api_url, request_context)
+            response_data = fetch_api_response(api_url, request_context)
             db_counter_value = get_db_visitor_counter(account_name, table_name, partition_key, row_key)
 
             assert db_counter_value >= response_data[VISITOR_COUNTER_KEY], (
