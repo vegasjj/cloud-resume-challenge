@@ -6,9 +6,9 @@ There are no staging slots so production is affected before knowing if all valid
 
 One possible solution is deploying and immediately do a rollback if the test fails.
 
-Another solutions could be a staging environment or a ephemeral sandbox.
+Another solution could be a staging environment or an ephemeral sandbox.
 
-Ultimately, I could just remark the fact the this is a demonstrative project and go on with the simple deployment without accounting for the production risk (but it must be stated so it is clear I know the potential issues).
+Ultimately, I could just remark the fact that this is a demonstrative project and go on with the simple deployment without accounting for the production risk (but it must be stated so it is clear I know the potential issues).
 
 ## Shadow infra solution
 
@@ -30,7 +30,7 @@ This is the most clean solution but it is necessary to account for name collisio
 - Test on pushes before implementing pull request variant. (Success)
 - Test response formatting and authentication separately from testing and comparing response and db values (Success)
 - Consider removal of poorly integrated tests (Pending)
-- Consider replacing custom function to validate environment variables with using playwright natively (Pending).
+- Consider replacing custom function to validate environment variables with using playwright natively (Success).
 - Find a way to check if the entity is created in the database like with `create_entity.py`, maybe the order of the validation can help (Pending).
 - Testing workflow must be configured to run on pull requests (recreating the "ghost" environment) every time (backend only) to avoid merging errors and failed deployments to the main branch (Pending).
 

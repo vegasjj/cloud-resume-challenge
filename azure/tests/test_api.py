@@ -3,13 +3,10 @@ from azure.data.tables import TableServiceClient
 from azure.identity import DefaultAzureCredential
 import logging
 import os
-# import pytest
 
 def _require_env(name: str) -> str:
     value = os.getenv(name)
     assert value, f"Required environment variable '{name}' is not set"
-    # if not value:
-    #     pytest.fail(f"Required environment variable '{name}' is not set")
     return value
 
 VISITOR_COUNTER_KEY = "visitor_counter"
