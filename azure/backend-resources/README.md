@@ -572,7 +572,7 @@ You can copy and paste the workflow from [my own implementation](../../.github/w
 
 #### Workflows Triggers
 
-```sh
+```yml
 on:
   push:
     branches:
@@ -589,7 +589,7 @@ This workflow only triggers every time there is a push to the main branch, howev
 
 #### Deploying Backend Resources
 
-```sh
+```yml
 deploy_resources:
     env:
       TF_CLOUD_ORGANIZATION: azure-terraform-labs
@@ -631,7 +631,7 @@ deploy_resources:
 
 #### Executing the `create-entity-module` app
 
-```sh
+```yml
 create_visitor_counter_entity:
     needs: deploy_resources
     permissions:
@@ -708,7 +708,7 @@ create_visitor_counter_entity:
 
 #### Upload and Setup the Visitor Counter API
 
-```sh
+```yml
 setup_visitor_counter_api:
     needs: deploy_resources
     permissions:
