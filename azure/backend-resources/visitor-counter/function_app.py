@@ -46,7 +46,7 @@ def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
         logging.error(f"Error retrieving counter: {str(e)}")
         return func.HttpResponse(
             json.dumps({"error": "Error retrieving counter: Check the database!"}),
-            status_code=500,
+            status_code=511,
             mimetype="application/json"
         )
 
