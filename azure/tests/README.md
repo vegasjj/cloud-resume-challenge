@@ -1,5 +1,9 @@
 # Writing and executing smoke tests for the API
 
+The smoke test validates that the Azure Function API and Database infrastructure are in place to process web application requests successfully. The monitoring system is not validated.
+
+Playwright is used because it provides a Python library, maintaining consistency with the API's implementation language.
+
 The test must run at the end of provisioning all services but there is an issue.
 
 There are no staging slots so production is affected before knowing if all validation checks are green.
@@ -26,13 +30,19 @@ This is the most clean solution but it is necessary to account for name collisio
 
 ## Test strategy
 
-- Ensure test authenticates and run before implementing safeguards to production (Success).
-- Test on pushes before implementing pull request variant. (Success)
-- Test response formatting and authentication separately from testing and comparing response and db values (Success)
-- Consider removal of poorly integrated tests (Pending)
-- Consider replacing custom function to validate environment variables with using playwright natively (Success).
-- Find a way to check if the entity is created in the database like with `create_entity.py`, maybe the order of the validation can help (Pending).
+- Ensure test authenticates and run before implementing safeguards to production (Completed).
+- Test on pushes before implementing pull request variant. (Completed)
+- Test response formatting and authentication separately from testing and comparing response and db values (Completed).
+- Consider removal of poorly integrated tests (Completed).
+- Consider replacing custom function to validate environment variables using playwright natively (Completed).
+- The database assertion needs to be revisited as this should be validated and handled at the API level (Completed).
+- Errors triggered when calling the API must be sent in JSON format so it can be correctly handled in the test for clarity and troubleshooting (Pending).
+- Test for the database entity to exist (Pending).
+- Test for the database table to exist (Pending).
+- Test for the database account to exist and authenticate (Pending).
+- Decide if the final comparison between the database value and the API response value makes sense (Pending).
 - Testing workflow must be configured to run on pull requests (recreating the "ghost" environment) every time (backend only) to avoid merging errors and failed deployments to the main branch (Pending).
+- A safe way to recreate the ephemeral environment on pull requests must be implemented to avoid Azure credentials abuse from untrusted PRs (Pending).
 
 Running the tests in a container is an option if I would be worried about polluting the host but this is a single test so it shouldn't be a problem to run the test on the host.
 

@@ -306,7 +306,7 @@ mkdir create-entity-module
 
 You can recreate [my own implementation](./create-entity-module/) for this purpose. If you review [`create_entity.py`](./create-entity-module/create_entity.py) file you'll see this:
 
-```sh
+```py
 from azure.data.tables import TableServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
@@ -418,7 +418,7 @@ cd path/to/repo/azure/backend-resources/visitor-counter
 
 Next, open `function_app.py` and replace its content with the one [from my implementation](./visitor-counter/function_app.py):
 
-```sh
+```py
 import azure.functions as func
 import logging
 import os
