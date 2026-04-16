@@ -17,7 +17,7 @@ TIMEOUT_MS = 30000  # milliseconds for Playwright
 def fetch_api_response(api_url: str, request_context: APIRequestContext) -> dict:
     response = request_context.get(api_url)
 
-    assert response.status == 200, f"Expected status 200, got {response.status} {response.error}"
+    assert response.status == 200, f"Expected status 200, got {response.status} {response}"
     assert response.headers.get("content-type", "").startswith("application/json"), "Response is not JSON"
 
     response_data = response.json()
