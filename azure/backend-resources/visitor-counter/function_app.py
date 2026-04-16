@@ -4,6 +4,7 @@ import os
 import json
 from azure.data.tables import TableServiceClient, UpdateMode
 from azure.identity import DefaultAzureCredential
+from azure.core.exceptions import ResourceNotFoundError
 
 account_name = os.environ['COSMOS_DB_ACCOUNT_NAME']
 table_name = os.environ['COSMOS_DB_TABLE_NAME']
@@ -34,8 +35,20 @@ def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
     try:
         counter_entity = table_client.get_entity(partition_key=partition_key, row_key=row_key)
         current_value = counter_entity['visitor_counter']
+    except ResourceNotFoundError:
+        logging.error("Counter entity not found")
+        return func.HttpResponse(
+            json.dumps({"error": "Counter not found"}),
+            status_code=404,
+            mimetype="application/json"
+        )
     except Exception as e:
-        return func.HttpResponse(f"Error retrieving counter: {e}", status_code=500)
+        logging.error(f"Error retrieving counter: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({"error": "Error retrieving counter: Check the database!"}),
+            status_code=500,
+            mimetype="application/json"
+        )
 
     updated_value = current_value + 1
     counter_entity['visitor_counter'] = updated_value
@@ -43,8 +56,12 @@ def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
     try:
         table_client.update_entity(mode=UpdateMode.REPLACE, entity=counter_entity)
     except Exception as e:
-        return func.HttpResponse(f"Error updating counter: {e}", status_code=500)
-
+        logging.error(f"Error updating counter: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({"error": "Failed to update counter"}),
+            status_code=500,
+            mimetype="application/json"
+        )
     return func.HttpResponse(
         json.dumps({"visitor_counter": updated_value}),
         status_code=200,
