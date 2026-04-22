@@ -36,11 +36,13 @@ This is the most clean solution but it is necessary to account for name collisio
 - Consider removal of poorly integrated tests (Completed).
 - Consider replacing custom function to validate environment variables using playwright natively (Completed).
 - The database assertion needs to be revisited as this should be validated and handled at the API level (Completed).
-- Errors triggered when calling the API must be sent in JSON format so it can be correctly handled in the test for clarity and troubleshooting (Pending).
+- Errors triggered when calling the API must be sent in JSON format so it can be correctly handled in the test for clarity and troubleshooting (Completed).
+- Standardize the error responses in the API with a function helper, also use logging.exception instead of logging.error to capture stack traces automatically (check Gemini) (Pending).
+- Add environment variable checks on the API that can be validated on the test workflow (Pending).
 - Test for the database entity to exist (Pending).
 - Test for the database table to exist (Pending).
 - Test for the database account to exist and authenticate (Pending).
-- Decide if the final comparison between the database value and the API response value makes sense (Pending).
+- Decide if the final comparison between the database value and the API response value makes sense (Completed).
 - Testing workflow must be configured to run on pull requests (recreating the "ghost" environment) every time (backend only) to avoid merging errors and failed deployments to the main branch (Pending).
 - A safe way to recreate the ephemeral environment on pull requests must be implemented to avoid Azure credentials abuse from untrusted PRs (Pending).
 

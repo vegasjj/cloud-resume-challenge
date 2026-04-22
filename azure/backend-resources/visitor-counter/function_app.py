@@ -22,13 +22,14 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
     """
     This function is triggered by an HTTP request every time someone visits the cloud resume app.
-    The current "visitor_counter" value is retrieved from the "counter" table in the "visits-counter-db" cosmos db for table database and updated by one. Finally, the updated value is returned to the     cloud resume app for display.
+    The current "visitor_counter" value is retrieved from the "counter" table in the "cosmos-crc-prod" database and updated by one. 
+    Finally, the updated value is returned to the cloud resume app for display.
 
     Parameters:
     req (func.HttpRequest): The HTTP request object.
 
     Returns:
-    func.HttpResponse: The HTTP response object containing the updated counter value or an error message.
+    func.HttpResponse: The HTTP response object containing the updated visitor counter value or an error message.
     """
     logging.info('Python HTTP trigger function processed a request.')
 
