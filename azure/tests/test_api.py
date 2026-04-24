@@ -23,7 +23,7 @@ def fetch_api_response(api_url: str, request_context: APIRequestContext) -> dict
 
     if status != 200:
         if body and isinstance(body, dict):
-            error_msg = body.get("error", "No specific error message provided")
+            error_msg = body.get("message", "No specific error message provided")
         else:
             error_msg = response.text()[:100]
         assert False, f"❌ DEPLOYMENT HALTED: API returned {status}. Detail: {error_msg}"
