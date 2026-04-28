@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 try {
                     data = JSON.parse(rawText);
                 } catch (err) {
-                    // Ignore parse errors and fall back to text if JSON is invalid
+                    // Ignore parse errors and fall back to text if JSON isn't valid
                 }
             } 
 
