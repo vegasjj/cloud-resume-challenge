@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
             if (!response.ok) {
                 const errorDetail = data && data.message ? data.message : rawText;
-                throw new Error(`HTTP error! status: ${response.status}. Detail: ${errorDetail}`);
+                throw new Error(`Status code: ${response.status}. Detail: ${errorDetail}`);
             }
 
             return data;
@@ -26,5 +26,5 @@ document.addEventListener("DOMContentLoaded", function() {
                 element.innerText = data.visitor_counter;
             }
         })
-        .catch(error => console.error('Error fetching visitor counter:', error));
+        .catch(error => console.error('Visitor counter could not be fetched:', error));
 });
