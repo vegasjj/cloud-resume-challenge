@@ -7,6 +7,7 @@ on:
     paths-ignore:
       - '**.md'
       - '**.gitignore'
+      - 'frontend/**'
       - 'azure/frontend-resources/**'
       - '.github/workflows/deploy-frontend.yml'
       - 'azure/backend-resources/images/**'
