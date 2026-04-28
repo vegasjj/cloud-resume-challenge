@@ -37,7 +37,8 @@ This is the most clean solution but it is necessary to account for name collisio
 - Consider replacing custom function to validate environment variables using playwright natively (Completed).
 - The database assertion needs to be revisited as this should be validated and handled at the API level (Completed).
 - Errors triggered when calling the API must be sent in JSON format so it can be correctly handled in the test for clarity and troubleshooting (Completed).
-- Standardize the error responses in the API with a function helper, also use logging.exception instead of logging.error to capture stack traces automatically (check Gemini) (Pending).
+- Standardize the error responses in the API with a function helper, also use logging.error to capture stack traces automatically by setting the `exc_info` parameter to `True` (Completed).
+- Modify client-side API fetching code to handle JSON errors with the same pattern used on the API and tests (Completed).
 - Add environment variable checks on the API that can be validated on the test workflow (Pending).
 - Test for the database entity to exist (Pending).
 - Test for the database table to exist (Pending).
