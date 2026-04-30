@@ -1,8 +1,8 @@
 # 🌥️ cloud-resume-challenge
 
-I designed and built a stateless web application in Azure backed by a NoSQL database and exposed through a Python REST API. To ensure reliability, I implemented a monitoring and alerting system that tracks API performance and triggers email/push notifications on anomalies.
+I designed and built a stateless web application in Azure backed by a NoSQL database and exposed to clients through a Python REST API. To ensure reliability, I implemented a monitoring and alerting system that tracks API performance and triggers email/push notifications on anomalies.
 
-Deployments are fully automated using Infrastructure as Code with remote state management, applied on every commit to the main branch. For quality control, each pull request spins up an ephemeral test environment where automated tests run before any merge, preventing regressions from reaching production.
+Deployments are fully automated using Terraform with remote state management as Infrastructure as Code (IaC) tool, and GitHub Actions workflows to trigger CI/CD pipelines. For quality control, each pull request spins up an ephemeral test environment where automated tests run before any merge, preventing regressions from reaching production.
 
 ## 🌐 Live Sites
 
