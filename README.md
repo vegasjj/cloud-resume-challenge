@@ -8,6 +8,8 @@ Deployments are fully automated using Terraform with remote state management as 
 
 [resume.technicalmind.cloud](https://resume.technicalmind.cloud/) (Azure)
 
+**Note:** as of April 16, 2026, **Azure no longer supports managed TLS certificates on Azure CDN** so the site is currently running on an expired certificate. **To resolve this problem, it is necessary to migrate to a Bring Your Own Certificate (BYOC) model**, this implementation is being processed on [Issue: Implement BYOC on Azure CDN](https://github.com/vegasjj/cloud-resume-challenge/issues/4)
+
 ## 🖼️ Diagrams
 
 ### Azure Frontend Architecture
