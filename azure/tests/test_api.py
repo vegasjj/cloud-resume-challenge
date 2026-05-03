@@ -23,10 +23,12 @@ def fetch_api_response(api_url: str, request_context: APIRequestContext) -> dict
 
     if status != 200:
         if body and isinstance(body, dict):
-            error_msg = body.get("message", "No specific error message provided")
+            # error_msg = body.get("message", "No specific error message provided")
+            error_code = body.get("error_code", "UNKNOWN_ERROR")
+            error_detail = error_code
         else:
-            error_msg = response.text()[:100]
-        assert False, f"❌ DEPLOYMENT HALTED: API returned {status}. Detail: {error_msg}"
+            error_detail = response.text()[:100]
+        assert False, f"❌ DEPLOYMENT HALTED: API returned {status}. Detail: {error_detail}"
 
     assert response.headers.get("content-type", "").startswith("application/json"), "Response is not JSON"
     assert body is not None, f"❌ DEPLOYMENT HALTED: Response has JSON content-type but body could not be parsed: {response.text()[:100]}"
