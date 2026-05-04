@@ -14,42 +14,11 @@ on:
 
 jobs:
   run_tests:
-    permissions:
-      id-token: write
-      contents: read
-
     runs-on: ubuntu-latest 
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-              
-      - name: Azure Login using Managed Identity
-        id:   azure-login
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID_BACKEND }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
-      
-      - name: Create temporary data plane role assignment for entity reading
-        env:
-          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID_BACKEND }}
-          PRINCIPAL_ID: ${{ secrets.AZURE_PRINCIPAL_ID }}
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
-          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
-          ROLE_DEFINITION_ID: "00000000-0000-0000-0000-000000000001" # Cosmos DB Built-in Data Reader
-          
-        run: |
-          ROLE_ASSIGNMENT_ID=$(uuidgen)
-          echo "ROLE_ASSIGNMENT_ID=$ROLE_ASSIGNMENT_ID" >> $GITHUB_ENV
-          az cosmosdb sql role assignment create \
-            --role-assignment-id $ROLE_ASSIGNMENT_ID \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --account-name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
-            --principal-id ${{ env.PRINCIPAL_ID }} \
-            --role-definition-id ${{ env.ROLE_DEFINITION_ID }} \
-            --scope "/subscriptions/${{ env.SUBSCRIPTION_ID }}/resourceGroups/${{ env.RESOURCE_GROUP }}/providers/Microsoft.DocumentDB/databaseAccounts/${{ env.COSMOS_DB_ACCOUNT_NAME }}"
 
       - name: Set up Python to support test environment
         uses: actions/setup-python@v6
@@ -71,15 +40,3 @@ jobs:
           API_URL: ${{ vars.API_URL }}
         run: |
           pytest -q azure/tests/test_api.py
-
-      - name: Remove temporary role assignment
-        if: always() && steps.azure-login.outcome == 'success'
-        env:
-          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP_BACKEND }}
-        run: |
-          az cosmosdb sql role assignment delete \
-            --role-assignment-id ${{ env.ROLE_ASSIGNMENT_ID }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --account-name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
-            --yes
