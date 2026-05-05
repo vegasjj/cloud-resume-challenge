@@ -6,14 +6,17 @@ from azure.data.tables import TableServiceClient, UpdateMode
 from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
 
-account_name = os.environ['COSMOS_DB_ACCOUNT_NAME']
-table_name = os.environ['COSMOS_DB_TABLE_NAME']
-partition_key = os.environ['COSMOS_DB_PARTITION_KEY']
-row_key = os.environ['COSMOS_DB_ROW_KEY']
+missing_env_var = []
+def get_env_var(name: str) -> str:
+    env_var = os.getenv(name)
+    if not env_var:
+        missing_env_var.append(name)
+    return env_var
 
-credential = DefaultAzureCredential()
-account_url = f"https://{account_name}.table.cosmos.azure.com:443"
-generic_client_message = "An internal server error occurred, check the logs or contact your administrator"
+account_name = get_env_var('COSMOS_DB_ACCOUNT_NAME')
+table_name = get_env_var('COSMOS_DB_TABLE_NAME')
+partition_key = get_env_var('COSMOS_DB_PARTITION_KEY')
+row_key = get_env_var('COSMOS_DB_ROW_KEY')
 
 def create_error_response(client_message: str, server_message: str, status: int, code: str, exc_info: bool = True):
     logging.error(f"Status code error [{status}] occurred with error code: {code} and message: {server_message}", exc_info=exc_info)
@@ -26,8 +29,8 @@ def create_error_response(client_message: str, server_message: str, status: int,
         mimetype="application/json"
     )
 
-table_service = TableServiceClient(endpoint=account_url, credential=credential)
-table_client = table_service.get_table_client(table_name=table_name)
+credential = DefaultAzureCredential()
+generic_client_message = "An internal server error occurred, check the logs or contact your administrator"
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -45,6 +48,18 @@ def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
     func.HttpResponse: The HTTP response object containing the updated visitor counter value or an error message.
     """
     logging.info('Python HTTP trigger function processed a request.')
+
+    if missing_env_var:
+        return create_error_response(
+            generic_client_message,
+            f"Missing required environment variables: {', '.join(missing_env_var)}",
+            500,
+            "ENV_VAR_MISSING"
+        )
+    
+    account_url = f"https://{account_name}.table.cosmos.azure.com:443"
+    table_service = TableServiceClient(endpoint=account_url, credential=credential)
+    table_client = table_service.get_table_client(table_name=table_name)
 
     try:
         counter_entity = table_client.get_entity(partition_key=partition_key, row_key=row_key)
