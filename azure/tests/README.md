@@ -40,10 +40,8 @@ This is the most clean solution but it is necessary to account for name collisio
 - Standardize the error responses in the API with a function helper, also use logging.error to capture stack traces automatically by setting the `exc_info` parameter to `True` (Completed).
 - Modify client-side API fetching code to handle JSON errors with the same pattern used on the API and tests (Completed).
 - Add error codes in JSON error responses to show more details in failed CI/CD pipelines (Completed).
-- Add environment variable checks on the API that can be validated on the test workflow (Pending).
-- Test for the database entity to exist (Pending).
-- Test for the database table to exist (Pending).
-- Test for the database account to exist and authenticate (Pending).
+- Add environment variable checks on the API that can be validated on the test workflow (Completed).
+- Test for the database table to exist (Completed).
 - Decide if the final comparison between the database value and the API response value makes sense (Completed).
 - Testing workflow must be configured to run on pull requests (recreating the "ghost" environment) every time (backend only) to avoid merging errors and failed deployments to the main branch (Pending).
 - A safe way to recreate the ephemeral environment on pull requests must be implemented to avoid Azure credentials abuse from untrusted PRs (Pending).
