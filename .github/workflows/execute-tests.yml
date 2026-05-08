@@ -33,10 +33,6 @@ jobs:
 
       - name: Run integration test
         env:
-          COSMOS_DB_ACCOUNT_NAME: ${{ vars.COSMOS_DB_ACCOUNT_NAME }}
-          COSMOS_DB_TABLE_NAME: ${{ vars.COSMOS_DB_TABLE_NAME }}
-          COSMOS_DB_PARTITION_KEY: ${{ vars.COSMOS_DB_PARTITION_KEY }}
-          COSMOS_DB_ROW_KEY: ${{ vars.COSMOS_DB_ROW_KEY }}
           API_URL: ${{ vars.API_URL }}
         run: |
           pytest -q azure/tests/test_api.py
