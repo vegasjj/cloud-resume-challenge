@@ -35,4 +35,4 @@ jobs:
         env:
           API_URL: ${{ vars.API_URL }}
         run: |
-          pytest -q azure/tests/test_api.py
+          pytest -v azure/tests

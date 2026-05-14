@@ -1,7 +1,10 @@
-from playwright.sync_api import sync_playwright, APIRequestContext
+from playwright.sync_api import Playwright, APIRequestContext
+import pytest
 import json
-import logging
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def _require_env(name: str) -> str:
     value = os.getenv(name)
@@ -11,8 +14,20 @@ def _require_env(name: str) -> str:
 VISITOR_COUNTER_KEY = "visitor_counter"
 TIMEOUT_MS = 30000  # milliseconds for Playwright
 
-def fetch_api_response(api_url: str, request_context: APIRequestContext) -> dict:
-    response = request_context.get(api_url)
+@pytest.fixture(scope="session")
+def api_context(playwright: Playwright):
+    context = playwright.request.new_context(
+        base_url=_require_env("API_URL"),
+    )
+    
+    yield context
+    
+    # Dispose of the context once all tests are done
+    context.dispose()
+
+@pytest.fixture(scope="session")
+def shared_response_data(api_context: APIRequestContext):
+    response = api_context.post("visitor_counter")
     status = response.status
     body = None
     
@@ -28,29 +43,22 @@ def fetch_api_response(api_url: str, request_context: APIRequestContext) -> dict
             error_detail = error_code
         else:
             error_detail = response.text()[:100]
-        assert False, f"❌ DEPLOYMENT HALTED: API returned {status}. Detail: {error_detail}"
+        assert False, f"❌ API response returned {status}. Detail: {error_detail}"
 
-    assert response.headers.get("content-type", "").startswith("application/json"), "Response is not JSON"
-    assert body is not None, f"❌ DEPLOYMENT HALTED: Response has JSON content-type but body could not be parsed: {response.text()[:100]}"
+    assert response.headers.get("content-type", "").startswith("application/json"), "❌ API response is not JSON"
+    assert body is not None, f"❌ API response has JSON content-type but body could not be parsed: {response.text()[:100]}"
+    assert isinstance(body, dict), f"❌ API response returned a {type(body).__name__} instead of a dictionary."        
     
-    response_data = body
-    assert isinstance(response_data, dict), "API response is not a JSON object"
-    assert VISITOR_COUNTER_KEY in response_data, f"Response JSON does not contain '{VISITOR_COUNTER_KEY}' key"
-    assert response_data[VISITOR_COUNTER_KEY] is not None, f"API counter value is None. Full response: {response_data}"
-    assert isinstance(response_data[VISITOR_COUNTER_KEY], int), f"API counter value is not an int: {response_data[VISITOR_COUNTER_KEY]}"
-    assert response_data[VISITOR_COUNTER_KEY] >= 0, f"API counter value is negative (unexpected): {response_data[VISITOR_COUNTER_KEY]}"
+    return body
 
-    return response_data
+def test_response_contains_correct_key(shared_response_data):
+    assert VISITOR_COUNTER_KEY in shared_response_data, f"❌ API Response does not contain '{VISITOR_COUNTER_KEY}' key"
 
-def test_visitor_counter_api():
-    """
-    Test that the API counter matches the value in the database.
-    """
-    with sync_playwright() as p:
-        request_context = p.request.new_context(timeout=TIMEOUT_MS)
-        try:
-            api_url = _require_env("API_URL")
-            response_data = fetch_api_response(api_url, request_context)
-            logging.info(f"Response data: {response_data}")
-        finally:
-            request_context.dispose()
+def test_visitor_counter_is_not_none(shared_response_data):
+    assert shared_response_data[VISITOR_COUNTER_KEY] is not None, f"❌ Visitor counter value cannot be None. Full response: {shared_response_data}"
+
+def test_visitor_counter_is_an_int(shared_response_data):
+    assert isinstance(shared_response_data[VISITOR_COUNTER_KEY], int), f" ❌ Visitor counter value is not an int: {shared_response_data[VISITOR_COUNTER_KEY]}"
+
+def test_visitor_counter_is_not_negative(shared_response_data):
+    assert shared_response_data[VISITOR_COUNTER_KEY] >= 0, f" ❌ Visitor counter value is negative (unexpected): {shared_response_data[VISITOR_COUNTER_KEY]}"
