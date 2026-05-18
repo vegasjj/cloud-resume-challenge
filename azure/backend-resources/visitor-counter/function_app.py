@@ -92,7 +92,7 @@ def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
             "DATA_PERSISTENCE_FAILURE"
         )
     return func.HttpResponse(
-        json.dumps({"visitor_countering": updated_value}),
+        json.dumps([{"visitor_counter": updated_value}]),
         status_code=200,
         mimetype="application/json"
     )
