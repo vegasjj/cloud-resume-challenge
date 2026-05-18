@@ -9,7 +9,6 @@ def _require_env(name: str) -> str:
     return value
 
 VISITOR_COUNTER_KEY = "visitor_counter"
-TIMEOUT_MS = 30000  # milliseconds for Playwright
 
 @pytest.fixture(scope="session")
 def api_context(playwright: Playwright):
@@ -55,7 +54,25 @@ def test_visitor_counter_is_not_none(shared_response_data):
     assert shared_response_data[VISITOR_COUNTER_KEY] is not None, f"❌ Visitor counter value cannot be None. Full response: {shared_response_data}"
 
 def test_visitor_counter_is_an_int(shared_response_data):
-    assert isinstance(shared_response_data[VISITOR_COUNTER_KEY], int), f" ❌ Visitor counter value is not an int: {shared_response_data[VISITOR_COUNTER_KEY]}"
+    assert isinstance(shared_response_data[VISITOR_COUNTER_KEY], int), f"❌ Visitor counter value is not an int: {shared_response_data[VISITOR_COUNTER_KEY]}"
 
 def test_visitor_counter_is_not_negative(shared_response_data):
-    assert shared_response_data[VISITOR_COUNTER_KEY] >= 0, f" ❌ Visitor counter value is negative (unexpected): {shared_response_data[VISITOR_COUNTER_KEY]}"
+    assert shared_response_data[VISITOR_COUNTER_KEY] >= 0, f"❌ Visitor counter value is negative (unexpected): {shared_response_data[VISITOR_COUNTER_KEY]}"
+
+def test_database_increments_value(api_context: APIRequestContext, shared_response_data):
+    initial_count = shared_response_data[VISITOR_COUNTER_KEY]
+    
+    second_response = api_context.post("visitor_counter")
+    assert second_response.status == 200, "❌ Second API call failed during increment validation"
+    
+    try:
+        second_body = second_response.json()
+    except (ValueError, json.JSONDecodeError):
+        assert False, "❌ Second response body could not be parsed as JSON"
+        
+    second_count = second_body.get(VISITOR_COUNTER_KEY)
+    
+    assert second_count >= initial_count + 1, (
+        f"❌ Database state did not increment correctly. "
+        f"Expected {initial_count + 1} or higher, but got {second_count}"
+    )

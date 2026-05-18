@@ -44,8 +44,8 @@ This is the most clean solution but it is necessary to account for name collisio
 - Test for the database table to exist (Completed).
 - Decide if the final comparison between the database value and the API response value makes sense (Completed).
 - Consider separating each test into its own function using the same context (Completed).
-- Consider double POST request to check visitor counter increment accounting for race conditions (Pending).
-- Consider adding explicit test (currently implicit with valid API response) to check the database is updated (Pending).
+- Consider double POST request to check visitor counter increment accounting for race conditions (Completed).
+- Consider adding explicit test (currently implicit with valid API response) to check the database is updated (Completed).
 - Testing workflow must be configured to run on pull requests (recreating the "ghost" environment) every time (backend only) to avoid merging errors and failed deployments to the main branch (Pending).
 - A safe way to recreate the ephemeral environment on pull requests must be implemented to avoid Azure credentials abuse from untrusted PRs (Pending).
 
