@@ -8,7 +8,7 @@ resource "azurerm_cosmosdb_account" "db" {
   location                        = azurerm_resource_group.rg.location
   resource_group_name             = azurerm_resource_group.rg.name
   offer_type                      = "Standard"
-  local_authentication_disabled   = false
+  local_authentication_disabled   = true
 
   tags = {
     defaultExperience = "Azure Table"
