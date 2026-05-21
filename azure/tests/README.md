@@ -52,3 +52,5 @@ This is the most clean solution but it is necessary to account for name collisio
 Running the tests in a container is an option if I would be worried about polluting the host but this is a single test so it shouldn't be a problem to run the test on the host.
 
 It shouldn't be necessary to keep a Terraform remote state for the test as it will be created and torn down immediately.
+
+Incrementing the visitor counter by two in every test session should't be an issue as this mostly would occur on the ephemeral environment and only occasionally on production when merging merging PRs.
