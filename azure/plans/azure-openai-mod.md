@@ -301,12 +301,25 @@ Uses the **Responses API** (`client.responses.create()`) instead of the Chat Com
 All error responses use the default `exc_info=True` (inherited from `create_error_response`) for consistent server-side log traceability, matching the `visitor_counter` pattern.
 
 ```python
-# --- Resume Summarizer Function ---
-from openai import AzureOpenAI
-from azure.identity import get_bearer_token_provider
+# --- Shared environment variable handler ---
+missing_env_var = []
+missing_openai_env_var = []
+
+def get_env_var(name: str) -> str:
+    env_var = os.getenv(name)
+    if not env_var:
+        if name.startswith("AZURE_OPENAI"):
+            missing_openai_env_var.append(name)
+        else:
+            missing_env_var.append(name)
+    return env_var
 
 openai_endpoint = get_env_var('AZURE_OPENAI_ENDPOINT')
 openai_deployment = get_env_var('AZURE_OPENAI_DEPLOYMENT')
+
+# --- Resume Summarizer Function ---
+from openai import AzureOpenAI
+from azure.identity import get_bearer_token_provider
 
 SYSTEM_PROMPT = """You are a professional resume reviewer. Given a resume text, produce a concise 
 summary (3-5 sentences) highlighting the candidate's key qualifications, most relevant experience, 
@@ -335,15 +348,10 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Resume summarizer function processed a request.')
 
     # Validate environment variables
-    openai_missing = []
-    if not openai_endpoint:
-        openai_missing.append('AZURE_OPENAI_ENDPOINT')
-    if not openai_deployment:
-        openai_missing.append('AZURE_OPENAI_DEPLOYMENT')
-    if openai_missing:
+    if missing_openai_env_var:
         return create_error_response(
             generic_client_message,
-            f"Missing required environment variables: {', '.join(openai_missing)}",
+            f"Missing required environment variables: {', '.join(missing_openai_env_var)}",
             500,
             "ENV_VAR_MISSING"
         )

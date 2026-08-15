@@ -3,20 +3,29 @@ import logging
 import os
 import json
 from azure.data.tables import TableServiceClient, UpdateMode
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from azure.core.exceptions import ResourceNotFoundError
+from openai import AzureOpenAI
 
 missing_env_var = []
+missing_openai_env_var = []
+
 def get_env_var(name: str) -> str:
     env_var = os.getenv(name)
     if not env_var:
-        missing_env_var.append(name)
+        if name.startswith("AZURE_OPENAI"):
+            missing_openai_env_var.append(name)
+        else:
+            missing_env_var.append(name)
     return env_var
 
 account_name = get_env_var('COSMOS_DB_ACCOUNT_NAME')
 table_name = get_env_var('COSMOS_DB_TABLE_NAME')
 partition_key = get_env_var('COSMOS_DB_PARTITION_KEY')
 row_key = get_env_var('COSMOS_DB_ROW_KEY')
+
+openai_endpoint = get_env_var('AZURE_OPENAI_ENDPOINT')
+openai_deployment = get_env_var('AZURE_OPENAI_DEPLOYMENT')
 
 def create_error_response(client_message: str, server_message: str, status: int, code: str, exc_info: bool = True):
     logging.error(f"Status code error [{status}] occurred with error code: {code} and message: {server_message}", exc_info=exc_info)
@@ -93,6 +102,110 @@ def visitor_counter(req: func.HttpRequest) -> func.HttpResponse:
         )
     return func.HttpResponse(
         json.dumps({"visitor_counter": updated_value}),
+        status_code=200,
+        mimetype="application/json"
+    )
+
+
+# --- Resume Summarizer Function ---
+SYSTEM_PROMPT = """You are a professional resume reviewer. Given a resume text, produce a concise 
+summary (3-5 sentences) highlighting the candidate's key qualifications, most relevant experience, 
+and core technical skills. Be objective, professional, and focus on what makes this candidate stand out."""
+
+MAX_RESUME_LENGTH = 10000
+
+token_provider = get_bearer_token_provider(
+    credential,
+    "https://cognitiveservices.azure.com/.default"
+)
+
+@app.route(route="resume_summarizer", methods=["POST"])
+def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Accepts resume text via POST and returns an AI-generated summary
+    using Azure OpenAI GPT-4.1 Nano via system-assigned managed identity.
+    Uses the Responses API for streamlined model interaction.
+    
+    Parameters:
+    req (func.HttpRequest): The HTTP request with JSON body { "resume_text": "..." }
+    
+    Returns:
+    func.HttpResponse: JSON response { "summary": "..." } or error details.
+    """
+    logging.info('Resume summarizer function processed a request.')
+
+    if missing_openai_env_var:
+        return create_error_response(
+            generic_client_message,
+            f"Missing required environment variables: {', '.join(missing_openai_env_var)}",
+            500,
+            "ENV_VAR_MISSING"
+        )
+
+    # Parse and validate request body
+    try:
+        req_body = req.get_json()
+    except ValueError:
+        return create_error_response(
+            "Request body must be valid JSON with a 'resume_text' field.",
+            "Invalid JSON in request body",
+            400,
+            "INVALID_REQUEST_BODY"
+        )
+
+    resume_text = req_body.get('resume_text', '').strip()
+    if not resume_text:
+        return create_error_response(
+            "The 'resume_text' field is required and cannot be empty.",
+            "Empty resume_text field",
+            400,
+            "EMPTY_RESUME_TEXT"
+        )
+
+    if not isinstance(resume_text, str):
+        return create_error_response(
+            "The 'resume_text' field must be a string.",
+            "Invalid resume_text type",
+            400,
+            "INVALID_RESUME_TEXT"
+        )
+
+    if len(resume_text) > MAX_RESUME_LENGTH:
+        return create_error_response(
+            f"Resume text must be {MAX_RESUME_LENGTH} characters or fewer.",
+            f"Resume text length {len(resume_text)} exceeds limit {MAX_RESUME_LENGTH}",
+            400,
+            "RESUME_TEXT_TOO_LONG"
+        )
+
+    # Call Azure OpenAI via managed identity using the Responses API
+    try:
+        client = AzureOpenAI(
+            azure_endpoint=openai_endpoint,
+            azure_ad_token_provider=token_provider,
+            api_version="2025-04-01-preview"
+        )
+
+        response = client.responses.create(
+            model=openai_deployment,
+            instructions=SYSTEM_PROMPT,
+            input=resume_text,
+            max_output_tokens=300,
+            temperature=0.3
+        )
+
+        summary = response.output_text
+
+    except Exception:
+        return create_error_response(
+            generic_client_message,
+            "Failed to generate summary from Azure OpenAI",
+            500,
+            "OPENAI_API_FAILURE"
+        )
+
+    return func.HttpResponse(
+        json.dumps({"summary": summary}),
         status_code=200,
         mimetype="application/json"
     )

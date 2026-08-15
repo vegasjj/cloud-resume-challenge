@@ -73,3 +73,39 @@ variable "slack_channel_name" {
   default     = "#counter-function-alerts"
   type        = string
 }
+
+variable "openai_account_name" {
+  description = "Name of the Azure OpenAI account."
+  default     = "oai-crc-prod-001"
+  type        = string
+}
+
+variable "openai_model_name" {
+  description = "Name of the Azure OpenAI model deployment."
+  default     = "gpt-41-nano"
+  type        = string
+}
+
+variable "openai_sku" {
+  description = "SKU for the Azure OpenAI account."
+  default     = "S0"
+  type        = string
+}
+
+variable "vnet_name" {
+  description = "Name of the Virtual Network."
+  default     = "vnet-crc-prod-001"
+  type        = string
+}
+
+variable "subnet_function_name" {
+  description = "Name of the subnet delegated to the Function App."
+  default     = "snet-func-crc-prod"
+  type        = string
+}
+
+variable "subnet_pe_name" {
+  description = "Name of the subnet for private endpoints."
+  default     = "snet-pe-crc-prod"
+  type        = string
+}
