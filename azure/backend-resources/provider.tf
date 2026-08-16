@@ -6,7 +6,8 @@ provider "azurerm" {
     "Microsoft.Storage",
     "Microsoft.Insights",
     "Microsoft.Logic",
-    "Microsoft.CognitiveServices"
+    "Microsoft.CognitiveServices",
+    "Microsoft.App"
   ]
 
   features {

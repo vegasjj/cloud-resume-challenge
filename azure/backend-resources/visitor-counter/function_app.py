@@ -119,7 +119,7 @@ token_provider = get_bearer_token_provider(
     "https://cognitiveservices.azure.com/.default"
 )
 
-@app.route(route="resume_summarizer", methods=["POST"])
+@app.route(route="resume_summarizer", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
     """
     Accepts resume text via POST and returns an AI-generated summary
@@ -153,21 +153,30 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
             "INVALID_REQUEST_BODY"
         )
 
-    resume_text = req_body.get('resume_text', '').strip()
-    if not resume_text:
+    if not isinstance(req_body, dict):
         return create_error_response(
-            "The 'resume_text' field is required and cannot be empty.",
-            "Empty resume_text field",
+            "The 'resume_text' field must be a string.",
+            "Invalid request body type",
             400,
-            "EMPTY_RESUME_TEXT"
+            "INVALID_RESUME_TEXT"
         )
 
+    resume_text = req_body.get('resume_text')
     if not isinstance(resume_text, str):
         return create_error_response(
             "The 'resume_text' field must be a string.",
             "Invalid resume_text type",
             400,
             "INVALID_RESUME_TEXT"
+        )
+
+    resume_text = resume_text.strip()
+    if not resume_text:
+        return create_error_response(
+            "The 'resume_text' field is required and cannot be empty.",
+            "Empty resume_text field",
+            400,
+            "EMPTY_RESUME_TEXT"
         )
 
     if len(resume_text) > MAX_RESUME_LENGTH:
