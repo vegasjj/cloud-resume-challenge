@@ -66,16 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .then((data) => {
                 if (data && data.summary) {
-                    const summaryDiv = document.createElement("div");
-                    summaryDiv.className = "summary-content";
-                    const heading = document.createElement("h3");
-                    heading.textContent = "Summary";
-                    const paragraph = document.createElement("p");
-                    paragraph.textContent = data.summary;
-                    summaryDiv.appendChild(heading);
-                    summaryDiv.appendChild(paragraph);
-                    resultContainer.innerHTML = "";
-                    resultContainer.appendChild(summaryDiv);
+                    resultContainer.innerHTML = `<div class="summary-content"><h3>Summary</h3><p>$(data.summary)</p></div>`;
                 } else {
                     resultContainer.innerHTML =
                         '<p class="summary-error">No summary was returned. Please try again.</p>';
