@@ -24,7 +24,7 @@
 }
 
 * {
-    font-family: "Raleway", sans-serif;
+    font-family: Raleway, sans-serif;
 }
 
 body,
@@ -78,7 +78,7 @@ header * {
 }
 
 header .name * {
-    font-family: "Raleway";
+    font-family: Raleway;
     font-size: 30pt;
 }
 
@@ -295,7 +295,7 @@ footer {
 }
 
 #summarize-btn {
-    font-family: "Raleway", sans-serif;
+    font-family: Raleway, sans-serif;
     font-size: 10pt;
     font-weight: 600;
     padding: 8px 24px;
