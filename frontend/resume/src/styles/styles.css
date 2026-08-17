@@ -336,6 +336,7 @@ footer {
     line-height: 1.6;
     color: #444;
     margin: 0;
+    white-space: pre-line;
 }
 
 .summary-loading {

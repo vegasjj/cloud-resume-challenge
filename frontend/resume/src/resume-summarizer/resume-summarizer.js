@@ -1,91 +1,99 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById("resume-summarizer-form");
-    const textarea = document.getElementById("resume-text-input");
-    const button = document.getElementById("summarize-btn");
-    const resultContainer = document.getElementById("summary-result");
-    const charCounter = document.getElementById("char-counter");
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.querySelector("#resume-summarizer-form");
+    const textarea = document.querySelector("#resume-text-input");
+    const button = document.querySelector("#summarize-btn");
+    const resultContainer = document.querySelector("#summary-result");
+    const charCounter = document.querySelector("#char-counter");
+    
     const MAX_LENGTH = 10000;
+    const REQUEST_TIMEOUT_MS = 30000;
+    const API_ENDPOINT = "https://func-crc-prod-001.azurewebsites.net/api/resume_summarizer";
 
-    // if (!form || !textarea || !button || !resultContainer || !charCounter) {
-    //     return;
-    // }
+    if (!form || !textarea || !button || !resultContainer || !charCounter) {
+        return;
+    }
 
-    // Character counter
-    textarea.addEventListener("input", function () {
+    const setStatus = (message, className = "summary-error") => {
+        const p = document.createElement("p");
+        p.className = className;
+        p.textContent = message;
+        resultContainer.replaceChildren(p);
+    };
+
+    textarea.addEventListener("input", () => {
         const remaining = MAX_LENGTH - textarea.value.length;
         charCounter.textContent = `${remaining.toLocaleString()} characters remaining`;
         charCounter.style.color = remaining < 500 ? "#c0392b" : "#999";
     });
 
-    form.addEventListener("submit", function (e) {
+    form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const resumeText = textarea.value.trim();
         if (!resumeText) {
-            resultContainer.innerHTML =
-                '<p class="summary-error">Please enter your resume text.</p>';
+            setStatus("Please enter your resume text.");
             return;
         }
 
-        // Set loading state
+        if (resumeText.length > MAX_LENGTH) {
+            setStatus(`Resume text exceeds maximum allowed length of ${MAX_LENGTH.toLocaleString()} characters.`);
+            return;
+        }
+
         button.disabled = true;
         button.textContent = "Summarizing...";
-        resultContainer.innerHTML =
-            '<p class="summary-loading">Analyzing your resume...</p>';
+        setStatus("Analyzing your resume...", "summary-loading");
 
-        fetch(
-            "https://func-crc-prod-001.azurewebsites.net/api/resume_summarizer",
-            {
+        try {
+            const response = await fetch(API_ENDPOINT, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ resume_text: resumeText }),
-            }
-        )
-            .then(async (response) => {
-                const contentType = response.headers.get("content-type") || "";
-                const rawText = await response.text();
-                let data = null;
-
-                if (contentType.includes("application/json")) {
-                    try {
-                        data = JSON.parse(rawText);
-                    } catch (err) {
-                        // fall back to text
-                    }
-                }
-
-                if (!response.ok) {
-                    const errorDetail =
-                        data && data.message ? data.message : rawText;
-                    throw new Error(
-                        `Status code: ${response.status}. Detail: ${errorDetail}`
-                    );
-                }
-
-                return data;
-            })
-            .then((data) => {
-                if (data && data.summary) {
-                    resultContainer.innerHTML = `<div class="summary-content"><h3>Summary</h3><p>$(data.summary)</p></div>`;
-                } else {
-                    resultContainer.innerHTML =
-                        '<p class="summary-error">No summary was returned. Please try again.</p>';
-                }
-            })
-            .catch((error) => {
-                console.error("Resume summarizer error:", error);
-                resultContainer.innerHTML =
-                    '<p class="summary-error">An error occurred while summarizing. Please try again later.</p>';
-            })
-            .finally(() => {
-                button.disabled = false;
-                button.textContent = "Summarize";
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
             });
-    });
 
-    // function escapeHtml(text) {
-    //     const div = document.createElement("div");
-    //     div.textContent = text;
-    //     return div.innerHTML.replace(/\n/g, "<br>");
-    // }
+            const contentType = response.headers.get("content-type") || "";
+            const rawText = await response.text();
+            let data = null;
+
+            if (contentType.includes("application/json")) {
+                try {
+                    data = JSON.parse(rawText);
+                } catch {
+                    // Fall back to null if JSON parsing fails
+                }
+            }
+
+            if (!response.ok) {
+                const errorDetail = data?.message || rawText || "Unknown server error";
+                throw new Error(`Status: ${response.status}. Detail: ${errorDetail}`);
+            }
+
+            if (data?.summary) {
+                const content = document.createElement("div");
+                const heading = document.createElement("h3");
+                const summary = document.createElement("p");
+
+                content.className = "summary-content";
+                heading.textContent = "Summary";
+                summary.textContent = data.summary;
+
+                content.append(heading, summary);
+                resultContainer.replaceChildren(content);
+            } else {
+                setStatus("No summary was returned. Please try again.");
+            }
+        } catch (error) {
+            console.error("Resume summarizer error:", error);
+
+            if (error.name === "TimeoutError" || error.name === "AbortError") {
+                setStatus("The request timed out. Please try again.");
+            } else {
+                setStatus("An error occurred while summarizing. Please try again later.");
+            }
+        } finally {
+            button.disabled = false;
+            button.textContent = "Summarize";
+        }
+    });
 });
