@@ -1,6 +1,7 @@
 provider "azurerm" {
   resource_providers_to_register = [
     "Microsoft.Web",
+    "Microsoft.App",
     "Microsoft.DocumentDB",
     "Microsoft.Network",
     "Microsoft.Storage",
