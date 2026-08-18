@@ -142,43 +142,51 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
             "ENV_VAR_MISSING"
         )
 
-    # Parse and validate request body
     try:
         req_body = req.get_json()
     except ValueError:
         return create_error_response(
-            "Request body must be valid JSON with a 'resume_text' field.",
+            "Resume summarization request was malformed, please try again or contact support.",
             "Invalid JSON in request body",
             400,
             "INVALID_REQUEST_BODY"
         )
 
-    resume_text = req_body.get('resume_text', '').strip()
-    if not resume_text:
+    if not isinstance(req_body, dict):
         return create_error_response(
-            "The 'resume_text' field is required and cannot be empty.",
-            "Empty resume_text field",
+            "Resume summarization request was malformed, please try again or contact support.",
+            "Root JSON is not an object",
             400,
-            "EMPTY_RESUME_TEXT"
+            "INVALID_REQUEST_BODY"
         )
 
-    if not isinstance(resume_text, str):
+    raw_resume_text = req_body.get('resume_text')
+
+    if not isinstance(raw_resume_text, str):
         return create_error_response(
-            "The 'resume_text' field must be a string.",
+            "Resume summarization request must contain a valid string of characters.",
             "Invalid resume_text type",
             400,
             "INVALID_RESUME_TEXT"
         )
 
+    resume_text = raw_resume_text.strip()
+    if not resume_text:
+        return create_error_response(
+            "Resume summarization request cannot be empty.",
+            "Empty resume_text field",
+            400,
+            "EMPTY_RESUME_TEXT"
+        )
+
     if len(resume_text) > MAX_RESUME_LENGTH:
         return create_error_response(
-            f"Resume text must be {MAX_RESUME_LENGTH} characters or fewer.",
-            f"Resume text length {len(resume_text)} exceeds limit {MAX_RESUME_LENGTH}",
+            f"Resume summarization request must be {MAX_RESUME_LENGTH} characters or fewer.",
+            f"Resume summarization request length {len(resume_text)} exceeds limit {MAX_RESUME_LENGTH}",
             400,
             "RESUME_TEXT_TOO_LONG"
         )
 
-    # Call Azure OpenAI via managed identity using the Responses API
     try:
         client = AzureOpenAI(
             azure_endpoint=openai_endpoint,
