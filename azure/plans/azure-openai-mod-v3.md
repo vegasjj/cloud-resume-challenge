@@ -6,9 +6,9 @@ Add an ingress protection layer for the `resume_summarizer` Azure Function using
 
 ```mermaid
 flowchart LR
-    A["Browser<br/>(resume page)"] -->|"POST /resume-summarizer<br/>subscription key in header"| B["Azure API Management<br/>(Consumption SKU)"]
+    A["Browser<br/>(resume page)"] -->|"POST /summarizer<br/>subscription key in header"| B["Azure API Management<br/>(Consumption SKU)"]
     B -->|"Rate limit<br/>Payload validation<br/>CORS<br/>Method restriction<br/>Quota enforcement"| B
-    B -->|"POST /api/resume_summarizer<br/>+ function key"| C["Azure Function<br/>func-crc-prod-001<br/>(auth_level=FUNCTION)"]
+    B -->|"POST /api/summarize<br/>+ function key"| C["Azure Function<br/>func-crc-prod-001<br/>(auth_level=FUNCTION)"]
     C -->|"Private Endpoint"| D["Azure OpenAI<br/>GPT-4.1 Nano"]
     D -->|"Summary"| C
     C -->|"JSON response"| B
@@ -281,11 +281,11 @@ resource "azurerm_api_management_subscription" "frontend_sub" {
 
 #### [MODIFY] `function_app.py` — Change Auth Level
 
-The `resume_summarizer` function's auth level changes from implicit ANONYMOUS (inherited from the `FunctionApp`) to explicit `FUNCTION`, requiring a function key for direct calls. The `visitor_counter` remains ANONYMOUS.
+The `resume_summarizer` function's route changes from `resume_summarizer` to `summarize` (to align with the APIM operation's `url_template`), and its auth level changes from implicit ANONYMOUS to explicit `FUNCTION`.
 
 ```diff
 -@app.route(route="resume_summarizer", methods=["POST"])
-+@app.route(route="resume_summarizer", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
++@app.route(route="summarize", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 ```
 
 This is the **only** change to `function_app.py`. The `visitor_counter` function continues to use the app-level `ANONYMOUS` auth.
@@ -359,7 +359,7 @@ Additionally, error handling will be updated to handle APIM-specific error respo
 | [`provider.tf`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/provider.tf) | MODIFY | Register `Microsoft.ApiManagement` resource provider |
 | [`variables.tf`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/variables.tf) | MODIFY | Add 3 APIM variables |
 | [`main.tf`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/main.tf) | MODIFY | Add 8 APIM resources + 1 data source |
-| [`function_app.py`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/visitor-counter/function_app.py) | MODIFY | Change `resume_summarizer` auth level to `FUNCTION` |
+| [`function_app.py`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/visitor-counter/function_app.py) | MODIFY | Change route to `summarize` and auth level to `FUNCTION` |
 | [`resume-summarizer.js`](file:///workspaces/cloud-resume-challenge/frontend/resume/src/resume-summarizer/resume-summarizer.js) | MODIFY | Update API endpoint to APIM gateway, add subscription key header, add 429/413 error handling |
 
 ---
@@ -428,7 +428,7 @@ Additionally, error handling will be updated to handle APIM-specific error respo
 3. **Direct function access blocked without key**:
    ```bash
    # Without function key — should return 401
-   curl -X POST "https://func-crc-prod-001.azurewebsites.net/api/resume_summarizer" \
+   curl -X POST "https://func-crc-prod-001.azurewebsites.net/api/summarize" \
      -H "Content-Type: application/json" \
      -d '{"resume_text": "test"}'
    ```
