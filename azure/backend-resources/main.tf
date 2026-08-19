@@ -434,16 +434,149 @@ resource "azurerm_private_dns_zone" "openai_dns" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "openai_dns_link" {
-  name                  = "openai-dns-vnet-link"
+  name = "openai-dns-vnet-link"
   # resource_group_name   = azurerm_resource_group.rg.name
   # private_dns_zone_name = azurerm_private_dns_zone.openai_dns.id
-  private_dns_zone_id   = azurerm_private_dns_zone.openai_dns.id
-  virtual_network_id    = azurerm_virtual_network.vnet.id
+  private_dns_zone_id = azurerm_private_dns_zone.openai_dns.id
+  virtual_network_id  = azurerm_virtual_network.vnet.id
 }
 
 resource "azurerm_role_assignment" "func_openai_user" {
   scope                = azurerm_cognitive_account.openai.id
   role_definition_name = "Cognitive Services OpenAI User"
   principal_id         = azurerm_function_app_flex_consumption.func.identity.0.principal_id
+}
+
+data "azurerm_function_app_host_keys" "func_keys" {
+  name                = azurerm_function_app_flex_consumption.func.name
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_api_management" "apim" {
+  name                = var.apim_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  publisher_name      = var.apim_publisher_name
+  publisher_email     = var.apim_publisher_email
+  sku_name            = "Consumption_0"
+}
+
+resource "azurerm_api_management_named_value" "func_key" {
+  name                = "func-crc-default-key"
+  resource_group_name = azurerm_resource_group.rg.name
+  api_management_name = azurerm_api_management.apim.name
+  display_name        = "func-crc-default-key"
+  value               = data.azurerm_function_app_host_keys.func_keys.default_function_key
+  secret              = true
+}
+
+resource "azurerm_api_management_api" "resume_api" {
+  name                  = "resume-summarizer-api"
+  resource_group_name   = azurerm_resource_group.rg.name
+  api_management_name   = azurerm_api_management.apim.name
+  revision              = "1"
+  display_name          = "Resume Summarizer API"
+  path                  = "resume-summarizer"
+  protocols             = ["https"]
+  subscription_required = true
+  service_url           = "https://${azurerm_function_app_flex_consumption.func.default_hostname}/api"
+}
+
+resource "azurerm_api_management_api_operation" "summarize" {
+  operation_id        = "summarize-resume"
+  api_name            = azurerm_api_management_api.resume_api.name
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+  display_name        = "Summarize Resume"
+  method              = "POST"
+  url_template        = "/summarize"
+}
+
+resource "azurerm_api_management_api_policy" "resume_api_policy" {
+  api_name            = azurerm_api_management_api.resume_api.name
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+
+  xml_content = <<XML
+<policies>
+    <inbound>
+        <base />
+        <cors allow-credentials="false">
+            <allowed-origins>
+                <origin>https://resume.technicalmind.cloud</origin>
+            </allowed-origins>
+            <allowed-methods preflight-result-max-age="600">
+                <method>POST</method>
+                <method>OPTIONS</method>
+            </allowed-methods>
+            <allowed-headers>
+                <header>Content-Type</header>
+                <header>Ocp-Apim-Subscription-Key</header>
+            </allowed-headers>
+        </cors>
+        <choose>
+            <when condition='@(context.Request.Method != "POST" &amp;&amp; context.Request.Method != "OPTIONS")'>
+                <return-response>
+                    <set-status code="405" reason="Method Not Allowed" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>{"message": "Only POST requests are allowed.", "error_code": "METHOD_NOT_ALLOWED"}</set-body>
+                </return-response>
+            </when>
+        </choose>
+        <choose>
+            <when condition='@(context.Request.Body != null &amp;&amp; context.Request.Body.As&lt;byte[]&gt;(preserveContent: true).Length &gt; 15000)'>
+                <return-response>
+                    <set-status code="413" reason="Payload Too Large" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>{"message": "Request payload exceeds maximum size of 15,000 bytes.", "error_code": "PAYLOAD_TOO_LARGE"}</set-body>
+                </return-response>
+            </when>
+        </choose>
+        <rate-limit calls="5" renewal-period="60" />
+        <quota calls="100" renewal-period="86400" />
+        <set-header name="x-functions-key" exists-action="override">
+            <value>{{func-crc-default-key}}</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
+XML
+}
+
+resource "azurerm_api_management_product" "resume_product" {
+  product_id            = "resume-summarizer"
+  api_management_name   = azurerm_api_management.apim.name
+  resource_group_name   = azurerm_resource_group.rg.name
+  display_name          = "Resume Summarizer"
+  subscription_required = true
+  approval_required     = false
+  published             = true
+}
+
+resource "azurerm_api_management_product_api" "resume_product_api" {
+  api_name            = azurerm_api_management_api.resume_api.name
+  product_id          = azurerm_api_management_product.resume_product.product_id
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_api_management_subscription" "frontend_sub" {
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+  display_name        = "Frontend Resume App"
+  product_id          = azurerm_api_management_product.resume_product.id
+  state               = "active"
 }
 

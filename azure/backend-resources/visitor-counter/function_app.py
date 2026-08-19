@@ -119,7 +119,7 @@ token_provider = get_bearer_token_provider(
     "https://cognitiveservices.azure.com/.default"
 )
 
-@app.route(route="resume_summarizer", methods=["POST"])
+@app.route(route="summarize", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
     """
     Accepts resume text via POST and returns an AI-generated summary

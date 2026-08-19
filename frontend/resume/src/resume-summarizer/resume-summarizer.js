@@ -7,7 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const MAX_LENGTH = 10000;
     const REQUEST_TIMEOUT_MS = 30000;
-    const API_ENDPOINT = "https://func-crc-prod-001.azurewebsites.net/api/resume_summarizer";
+    const API_ENDPOINT = "https://apim-crc-prod-001.azure-api.net/resume-summarizer/summarize";
+    const APIM_SUBSCRIPTION_KEY = ""; // Set after deployment from terraform output
 
     if (!form || !textarea || !button || !resultContainer || !charCounter) {
         return;
@@ -47,7 +48,10 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const response = await fetch(API_ENDPOINT, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Ocp-Apim-Subscription-Key": APIM_SUBSCRIPTION_KEY,
+                },
                 body: JSON.stringify({ resume_text: resumeText }),
                 signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
             });
@@ -62,6 +66,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 } catch {
                     // Fall back to null if JSON parsing fails
                 }
+            }
+
+            if (response.status === 429) {
+                setStatus("Too many requests. Please wait a moment and try again.");
+                return;
+            }
+
+            if (response.status === 413) {
+                setStatus("Your resume text is too long. Please shorten it and try again.");
+                return;
             }
 
             if (!response.ok) {

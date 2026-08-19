@@ -109,3 +109,21 @@ variable "subnet_pe_name" {
   default     = "snet-pe-crc-prod"
   type        = string
 }
+
+variable "apim_name" {
+  description = "Name of the Azure API Management instance."
+  default     = "apim-crc-prod-001"
+  type        = string
+}
+
+variable "apim_publisher_name" {
+  description = "Publisher name for APIM."
+  default     = "Cloud Resume Challenge"
+  type        = string
+}
+
+variable "apim_publisher_email" {
+  description = "Publisher email for APIM."
+  default     = "vegasjj@gmail.com"
+  type        = string
+}
