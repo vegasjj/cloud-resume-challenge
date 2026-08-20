@@ -30,6 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
+        if (!APIM_SUBSCRIPTION_KEY) {
+            setStatus("The app cannot communicate with the summarizer. Please contact support.");
+            return;
+        }
+
         const resumeText = textarea.value.trim();
         if (!resumeText) {
             setStatus("Please enter your resume text.");
