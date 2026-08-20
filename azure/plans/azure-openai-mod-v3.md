@@ -6,7 +6,7 @@ Add an ingress protection layer for the `resume_summarizer` Azure Function using
 
 ```mermaid
 flowchart LR
-    A["Browser<br/>(resume page)"] -->|"POST /summarizer<br/>subscription key in header"| B["Azure API Management<br/>(Consumption SKU)"]
+    A["Browser<br/>(resume page)"] -->|"POST /summarize<br/>subscription key in header"| B["Azure API Management<br/>(Consumption SKU)"]
     B -->|"Rate limit<br/>Payload validation<br/>CORS<br/>Method restriction<br/>Quota enforcement"| B
     B -->|"POST /api/summarize<br/>+ function key"| C["Azure Function<br/>func-crc-prod-001<br/>(auth_level=FUNCTION)"]
     C -->|"Private Endpoint"| D["Azure OpenAI<br/>GPT-4.1 Nano"]
