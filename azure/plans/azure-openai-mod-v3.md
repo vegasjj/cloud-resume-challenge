@@ -325,11 +325,22 @@ The `fetch` call will include the subscription key header:
 Additionally, error handling will be updated to handle APIM-specific error responses (429 Too Many Requests, 405 Method Not Allowed, 413 Payload Too Large):
 
 ```javascript
+            if (response.status === 405) {
+                setStatus("Invalid request. Please try again");
+                return;
+            }
+
             if (response.status === 429) {
                 setStatus("Too many requests. Please wait a moment and try again.");
-            } else if (response.status === 413) {
+                return;
+            }
+
+            if (response.status === 413) {
                 setStatus("Your resume text is too long. Please shorten it and try again.");
-            } else if (!response.ok) {
+                return;
+            }
+
+            if (!response.ok) {
                 // existing error handling
             }
 ```
@@ -360,7 +371,7 @@ Additionally, error handling will be updated to handle APIM-specific error respo
 | [`variables.tf`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/variables.tf) | MODIFY | Add 3 APIM variables |
 | [`main.tf`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/main.tf) | MODIFY | Add 8 APIM resources + 1 data source |
 | [`function_app.py`](file:///workspaces/cloud-resume-challenge/azure/backend-resources/visitor-counter/function_app.py) | MODIFY | Change route to `summarize` and auth level to `FUNCTION` |
-| [`resume-summarizer.js`](file:///workspaces/cloud-resume-challenge/frontend/resume/src/resume-summarizer/resume-summarizer.js) | MODIFY | Update API endpoint to APIM gateway, add subscription key header, add 429/413 error handling |
+| [`resume-summarizer.js`](file:///workspaces/cloud-resume-challenge/frontend/resume/src/resume-summarizer/resume-summarizer.js) | MODIFY | Update API endpoint to APIM gateway, add subscription key header, add 429/413/405 error handling |
 
 ---
 

@@ -73,6 +73,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
+            if (response.status === 405) {
+                setStatus("Invalid request. Please try again");
+                return;
+            }
+
             if (response.status === 429) {
                 setStatus("Too many requests. Please wait a moment and try again.");
                 return;
