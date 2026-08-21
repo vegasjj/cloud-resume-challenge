@@ -193,7 +193,7 @@ resource "azurerm_api_management_api_policy" "resume_api_policy" {
             </allowed-headers>
         </cors>
         <choose>
-            <when condition="@(context.Request.Method != "POST" && context.Request.Method != "OPTIONS")">
+            <when condition='@(context.Request.Method != "POST" &amp;&amp; context.Request.Method != "OPTIONS")'>
                 <return-response>
                     <set-status code="405" reason="Method Not Allowed" />
                     <set-header name="Content-Type" exists-action="override">
@@ -204,7 +204,7 @@ resource "azurerm_api_management_api_policy" "resume_api_policy" {
             </when>
         </choose>
         <choose>
-            <when condition="@(context.Request.Body != null && context.Request.Body.As<string>(preserveContent: true).Length > 15000)">
+            <when condition='@(context.Request.Body != null &amp;&amp; context.Request.Body.As&lt;byte[]&gt;(preserveContent: true).Length &gt; 15000)'>
                 <return-response>
                     <set-status code="413" reason="Payload Too Large" />
                     <set-header name="Content-Type" exists-action="override">
