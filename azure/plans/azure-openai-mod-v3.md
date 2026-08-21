@@ -415,7 +415,7 @@ Additionally, error handling will be updated to handle APIM-specific error respo
    curl -X GET "https://apim-crc-prod-001.azure-api.net/resume-summarizer/summarize" \
      -H "Ocp-Apim-Subscription-Key: $SUB_KEY"
 
-   # Rate limit test — 6 rapid calls, 6th should return 429
+   # Rate limit test — 6 rapid calls, at least one call should return 429
    for i in {1..6}; do
      curl -s -o /dev/null -w "%{http_code}\n" -X POST \
        "https://apim-crc-prod-001.azure-api.net/resume-summarizer/summarize" \
