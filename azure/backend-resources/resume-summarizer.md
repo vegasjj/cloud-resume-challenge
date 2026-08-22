@@ -58,10 +58,12 @@ flowchart LR
 
 ## Security and performance considerations
 
-- Metric monitoring idea: TPM and RPM monitoring
+- Monitoring should be set for: 
+    - TPM, RPM  and budget for OpenAI deployment.
+    - `rate-limit` and `quota` exhaustion for APIM.
 - Consider using key vault to store function key to be use by azure apim via managed identity, this way there’s no need for the value to be stored in terraform state outside of azure
 - I think for the outbound IP whitelisting of the azure APIM instance to be done in the function app network settings (closing the gap in case of function key exposure), I need to upgrade as consumptions SKU doesn’t support static IPs. Also, it would be necessary to bring visitor_counter into the azure APIM because it uses the same function app. Region-level whitelisting of Azure datacenter could be explored as well if security requirements allow for it.
-- Unfortunately, both rate-limiting-by-key and quota-by-key are not possible in the consumption tier so subscription based limiting is the next best thing. Cannot separate malicious traffic from legitimate traffic (shared `rate-limit` and `quota` allowance). This risk is acceptable in demo projects like this one but cannot be recommended in production environments where traffic must be protected for legitimate users while malicious traffic is blocked/throttled.
+- Unfortunately, both rate-limiting-by-key and quota-by-key are not possible in the consumption tier so subscription based limiting is the next best thing. Cannot separate malicious traffic from legitimate traffic (shared `rate-limit` and `quota` allowance) so a potential attacker could cause `429` for all visitors. This risk is acceptable in demo projects like this one but cannot be recommended in production environments where traffic must be protected for legitimate users while malicious traffic is blocked/throttled.
 - The subscription key to call the API will be manually injected post deployment on JavaScript and an automated fix will be implemented after a minimum viable product is functional (the fix could add unforeseen frontend architecture changes outside of the scope os this PR).
 - A temporal guard is added on [`resume-summarizer.js`](../../frontend/resume/src/resume-summarizer/resume-summarizer.js) so if the subscription key is missing than prevent an unhandled failed operation.
 - The risk of publishing the subscription key in static JavaScript is fine in this case as it only provides throttling functionality, the function is authenticated and the OpenAI deployment is behind a private endpoint accessible through managed identity only which provide the real security.
