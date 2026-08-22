@@ -6,6 +6,7 @@ from azure.data.tables import TableServiceClient, UpdateMode
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from azure.core.exceptions import ResourceNotFoundError
 from openai import AzureOpenAI
+from functools import lru_cache
 
 missing_env_var = []
 missing_openai_env_var = []
@@ -119,6 +120,14 @@ token_provider = get_bearer_token_provider(
     "https://cognitiveservices.azure.com/.default"
 )
 
+@lru_cache(maxsize=1)
+def get_openai_client() -> AzureOpenAI:
+    return AzureOpenAI(
+        azure_endpoint=openai_endpoint,
+        azure_ad_token_provider=token_provider,
+        api_version="2025-04-01-preview"
+    )
+
 @app.route(route="summarize", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -188,12 +197,7 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     try:
-        client = AzureOpenAI(
-            azure_endpoint=openai_endpoint,
-            azure_ad_token_provider=token_provider,
-            api_version="2025-04-01-preview"
-        )
-
+        client = get_openai_client()
         response = client.responses.create(
             model=openai_deployment,
             instructions=SYSTEM_PROMPT,

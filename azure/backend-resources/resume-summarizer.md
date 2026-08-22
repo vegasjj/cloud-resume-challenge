@@ -50,6 +50,8 @@ flowchart LR
 
 **TODO:** Finish section.
 
+- Used `functools.lru_cache` to cache Azure Open AI client and allow for warn calls to reuse it while ensuring authentication calls to Microsoft Foundry only occur after environment validation is done so the worker process doesn't crash during host initialization.
+
 ### Frontend
 
 **TODO:** Finish section.
