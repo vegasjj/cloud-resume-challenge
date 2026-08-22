@@ -515,17 +515,6 @@ resource "azurerm_api_management_api_policy" "resume_api_policy" {
             </allowed-headers>
         </cors>
         <choose>
-            <when condition='@(context.Request.Method != "POST" &amp;&amp; context.Request.Method != "OPTIONS")'>
-                <return-response>
-                    <set-status code="405" reason="Method Not Allowed" />
-                    <set-header name="Content-Type" exists-action="override">
-                        <value>application/json</value>
-                    </set-header>
-                    <set-body>{"message": "Only POST requests are allowed.", "error_code": "METHOD_NOT_ALLOWED"}</set-body>
-                </return-response>
-            </when>
-        </choose>
-        <choose>
             <when condition='@(context.Request.Body != null &amp;&amp; context.Request.Body.As&lt;byte[]&gt;(preserveContent: true).Length &gt; 15000)'>
                 <return-response>
                     <set-status code="413" reason="Payload Too Large" />
@@ -550,6 +539,20 @@ resource "azurerm_api_management_api_policy" "resume_api_policy" {
     </outbound>
     <on-error>
         <base />
+        <choose>
+            <when condition='@(context.LastError != null &amp;&amp; context.LastError.Reason == "OperationNotFound")'>
+                <return-response>
+                    <set-status code="405" reason="Method Not Allowed" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-header name="Allow" exists-action="override">
+                        <value>POST, OPTIONS</value>
+                    </set-header>
+                    <set-body>{"message": "Only POST requests are allowed.", "error_code": "METHOD_NOT_ALLOWED"}</set-body>
+                </return-response>
+            </when>
+        </choose>
     </on-error>
 </policies>
 XML
