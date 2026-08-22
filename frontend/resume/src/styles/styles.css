@@ -78,7 +78,7 @@ header * {
 }
 
 header .name * {
-    font-family: Raleway;
+    font-family: Raleway, sans-serif;
     font-size: 30pt;
 }
 
