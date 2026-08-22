@@ -198,11 +198,9 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
             model=openai_deployment,
             instructions=SYSTEM_PROMPT,
             input=resume_text,
-            max_output_tokens=300,
+            max_output_tokens=500,
             temperature=0.3
         )
-
-        summary = response.output_text
 
     except Exception:
         return create_error_response(
@@ -212,8 +210,17 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
             "OPENAI_API_FAILURE"
         )
 
+    if response.status != "completed":
+        reason = getattr(response.incomplete_details, "reason", "unknown")
+        return create_error_response(
+            "Failed to generate a complete summary. Please try again.",
+            f"Model response status '{response.status}' (reason: {reason})",
+            502,
+            "OPENAI_INCOMPLETE_RESPONSE"
+        )
+
     return func.HttpResponse(
-        json.dumps({"summary": summary}),
+        json.dumps({"summary": response.output_text}),
         status_code=200,
         mimetype="application/json"
     )

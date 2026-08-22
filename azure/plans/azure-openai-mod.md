@@ -396,11 +396,9 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
             model=openai_deployment,
             instructions=SYSTEM_PROMPT,
             input=resume_text,
-            max_output_tokens=300,
+            max_output_tokens=500,
             temperature=0.3
         )
-
-        summary = response.output_text
 
     except Exception:
         return create_error_response(
@@ -410,8 +408,17 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
             "OPENAI_API_FAILURE"
         )
 
+    if response.status != "completed":
+        reason = getattr(response.incomplete_details, "reason", "unknown")
+        return create_error_response(
+            "Failed to generate a complete summary. Please try again.",
+            f"Model response status '{response.status}' (reason: {reason})",
+            502,
+            "OPENAI_INCOMPLETE_RESPONSE"
+        )
+
     return func.HttpResponse(
-        json.dumps({"summary": summary}),
+        json.dumps({"summary": response.output_text}),
         status_code=200,
         mimetype="application/json"
     )
@@ -424,8 +431,9 @@ def resume_summarizer(req: func.HttpRequest) -> func.HttpResponse:
 - All errors use the default `exc_info=True` for server-side log traceability
 - Uses `POST` method only (not GET) since we're sending resume text
 - Input validation: non-empty, valid JSON, max 10,000 characters
+- Output validation: check for `response.status != "completed"` to avoid returning imcomplete or failed respones fron the model.
 - `temperature=0.3` for consistent, professional summaries
-- `max_output_tokens=300` to keep summaries concise and costs low
+- `max_output_tokens=500` to keep summaries concise and costs low
 - Uses the **Responses API** (`client.responses.create()`) with `input=` / `instructions=` / `response.output_text`
 
 ---
