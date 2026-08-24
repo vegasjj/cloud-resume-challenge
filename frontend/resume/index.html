@@ -6,6 +6,7 @@
     <title>Jose Javier Vegas Cloud Resume Challenge</title>
     <link href="./src/styles/styles.css" rel="stylesheet" type="text/css">
     <script src="./src/visitor-counter/visitor-counter.js" defer></script>
+    <script src="./src/resume-summarizer/resume-summarizer.js" defer></script>
 </head>
 <body>
     <header>
@@ -198,6 +199,25 @@
             </div>
         </div>
     </main>
+    <section class="resume-summarizer-section">
+        <div class="resume-summarizer-container">
+            <h2>AI Resume Summarizer</h2>
+            <p class="summarizer-description">Paste a resume below and get an AI-powered professional summary.</p>
+            <form id="resume-summarizer-form">
+                <textarea
+                    id="resume-text-input"
+                    placeholder="Paste your resume text here..."
+                    maxlength="10000"
+                    rows="8"
+                ></textarea>
+                <div class="summarizer-controls">
+                    <span id="char-counter" class="char-counter">10,000 characters remaining</span>
+                    <button type="submit" id="summarize-btn">Summarize</button>
+                </div>
+            </form>
+            <div id="summary-result" aria-live="polite" aria-atomic="true"></div>
+        </div>
+    </section>
     <footer>
         <div>Made with &hearts;. Created with the help of <a href="//harold.kim/">@stypr</a>. Inspired by <a href="//github.com/posquit0/Awesome-CV">Awesome-CV</a>. HTML5/CSS3 verified.</div>
     </footer>

@@ -4,24 +4,24 @@ resource "azurerm_resource_group" "rg" {
 }
 
 resource "azurerm_cosmosdb_account" "db" {
-  name                            = var.cosmosdb_account_name
-  location                        = azurerm_resource_group.rg.location
-  resource_group_name             = azurerm_resource_group.rg.name
-  offer_type                      = "Standard"
-  local_authentication_enabled    = false
+  name                         = var.cosmosdb_account_name
+  location                     = azurerm_resource_group.rg.location
+  resource_group_name          = azurerm_resource_group.rg.name
+  offer_type                   = "Standard"
+  local_authentication_enabled = false
 
   tags = {
     defaultExperience = "Azure Table"
   }
 
   backup {
-      type = "Continuous"
-      tier = "Continuous7Days"
-    }
+    type = "Continuous"
+    tier = "Continuous7Days"
+  }
 
   capabilities {
-      name = "EnableServerless"
-    }
+    name = "EnableServerless"
+  }
 
   capabilities {
     name = "EnableTable"
@@ -30,7 +30,7 @@ resource "azurerm_cosmosdb_account" "db" {
   capacity {
     total_throughput_limit = 4000
   }
-  
+
   consistency_policy {
     consistency_level       = "BoundedStaleness"
     max_interval_in_seconds = 86400
@@ -40,18 +40,12 @@ resource "azurerm_cosmosdb_account" "db" {
     location          = var.location
     failover_priority = 0
   }
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
 }
 
 resource "azurerm_cosmosdb_table" "tb" {
   name                = var.cosmosdb_table_name
   resource_group_name = azurerm_resource_group.rg.name
   account_name        = azurerm_cosmosdb_account.db.name
-  depends_on = [
-    azurerm_cosmosdb_account.db
-  ]
 }
 
 resource "azurerm_storage_account" "st" {
@@ -62,14 +56,11 @@ resource "azurerm_storage_account" "st" {
   account_replication_type        = "LRS"
   allow_nested_items_to_be_public = false
   # shared_access_key_enabled = false
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
 }
 
 resource "azurerm_storage_container" "sc" {
-  name                  = "deploymentpackage"
-  storage_account_id  = azurerm_storage_account.st.id
+  name               = "deploymentpackage"
+  storage_account_id = azurerm_storage_account.st.id
 }
 
 resource "azurerm_service_plan" "sp" {
@@ -78,31 +69,29 @@ resource "azurerm_service_plan" "sp" {
   location            = azurerm_resource_group.rg.location
   os_type             = "Linux"
   sku_name            = "FC1"
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
 }
 
 resource "azurerm_function_app_flex_consumption" "func" {
-  name                                     = var.function_app_name
-  resource_group_name                      = azurerm_resource_group.rg.name
-  location                                 = azurerm_resource_group.rg.location
-  service_plan_id                          = azurerm_service_plan.sp.id
-  
-  storage_container_type                   = "blobContainer"
-  storage_container_endpoint               = "${azurerm_storage_account.st.primary_blob_endpoint}${azurerm_storage_container.sc.name}"
-  storage_authentication_type              = "StorageAccountConnectionString"
-  storage_access_key                       = azurerm_storage_account.st.primary_access_key
-  runtime_name                             = "python"
-  runtime_version                          = "3.12"
+  name                = var.function_app_name
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  service_plan_id     = azurerm_service_plan.sp.id
+
+  storage_container_type                         = "blobContainer"
+  storage_container_endpoint                     = "${azurerm_storage_account.st.primary_blob_endpoint}${azurerm_storage_container.sc.name}"
+  storage_authentication_type                    = "StorageAccountConnectionString"
+  storage_access_key                             = azurerm_storage_account.st.primary_access_key
+  runtime_name                                   = "python"
+  runtime_version                                = "3.12"
   webdeploy_publish_basic_authentication_enabled = false
   # TO-DO Need to dig into this
-  client_certificate_mode                  = "Required"
-  https_only                               = true
+  client_certificate_mode   = "Required"
+  https_only                = true
+  virtual_network_subnet_id = azurerm_subnet.snet_func.id
   identity {
     type = "SystemAssigned"
   }
-  
+
   site_config {
     application_insights_connection_string = azurerm_application_insights.ai.connection_string
     http2_enabled                          = true
@@ -116,11 +105,13 @@ resource "azurerm_function_app_flex_consumption" "func" {
     COSMOS_DB_PARTITION_KEY = "counter_partitionkey"
     COSMOS_DB_ROW_KEY       = "counter_rowkey"
     COSMOS_DB_TABLE_NAME    = var.cosmosdb_table_name
+    AZURE_OPENAI_ENDPOINT   = azurerm_cognitive_account.openai.endpoint
+    AZURE_OPENAI_DEPLOYMENT = var.openai_model_name
   }
   # Dig into the need of this tag
-  tags = { 
+  tags = {
     "hidden-link: /app-insights-resource-id" = azurerm_application_insights.ai.id
-   }
+  }
 }
 
 resource "azurerm_cosmosdb_sql_role_definition" "rd" {
@@ -130,9 +121,9 @@ resource "azurerm_cosmosdb_sql_role_definition" "rd" {
   assignable_scopes   = [azurerm_cosmosdb_account.db.id]
   permissions {
     data_actions = [
-          "Microsoft.DocumentDB/databaseAccounts/readMetadata",
-          "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/read",
-          "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/replace"
+      "Microsoft.DocumentDB/databaseAccounts/readMetadata",
+      "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/read",
+      "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/replace"
     ]
   }
 }
@@ -146,15 +137,12 @@ resource "azurerm_cosmosdb_sql_role_assignment" "ra" {
 }
 
 resource "azurerm_log_analytics_workspace" "law" {
-  name                          = var.log_analytics_name
-  location                      = var.location
-  resource_group_name           = azurerm_resource_group.rg.name
+  name                = var.log_analytics_name
+  location            = var.location
+  resource_group_name = azurerm_resource_group.rg.name
   # local_authentication_enabled  = false
-  sku                           = "PerGB2018"
-  retention_in_days             = 30
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
+  sku               = "PerGB2018"
+  retention_in_days = 30
 }
 
 resource "azurerm_application_insights" "ai" {
@@ -164,9 +152,6 @@ resource "azurerm_application_insights" "ai" {
   workspace_id        = azurerm_log_analytics_workspace.law.id
   application_type    = "web"
   # local_authentication_disabled = true
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
 }
 
 data "azurerm_managed_api" "api_data" {
@@ -179,9 +164,6 @@ resource "azurerm_api_connection" "api_connection" {
   resource_group_name = azurerm_resource_group.rg.name
   managed_api_id      = data.azurerm_managed_api.api_data.id
   display_name        = "Slack API Connection"
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
 }
 # Test possible alternative with bot channel registration for fully
 # automated workflow with Slack API authentication
@@ -203,8 +185,8 @@ resource "azurerm_api_connection" "api_connection" {
 # }
 
 resource "azurerm_logic_app_workflow" "alert_workflow" {
-  name     = "slack-channel-integration"
-  location = azurerm_resource_group.rg.location
+  name                = "slack-channel-integration"
+  location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   parameters = {
     "$connections" = "{\"slack\":{\"connectionId\":\"${azurerm_api_connection.api_connection.id}\",\"id\":\"${azurerm_api_connection.api_connection.managed_api_id}\"}}"
@@ -212,9 +194,6 @@ resource "azurerm_logic_app_workflow" "alert_workflow" {
   workflow_parameters = {
     "$connections" = "{\"defaultValue\":{},\"type\":\"Object\"}"
   }
-  depends_on = [
-    azurerm_resource_group.rg
-  ]
 }
 
 resource "azurerm_logic_app_trigger_http_request" "workflow_trigger" {
@@ -295,13 +274,9 @@ resource "azurerm_monitor_action_group" "alert_notifications" {
   # }
   webhook_receiver {
     name                    = "Slack alert channel"
-    service_uri             = "${azurerm_logic_app_trigger_http_request.workflow_trigger.callback_url}"
+    service_uri             = azurerm_logic_app_trigger_http_request.workflow_trigger.callback_url
     use_common_alert_schema = true
   }
-  depends_on = [
-    azurerm_logic_app_trigger_http_request.workflow_trigger,
-    azurerm_resource_group.rg
-  ]
 }
 
 resource "azurerm_monitor_metric_alert" "metric_1" {
@@ -313,7 +288,7 @@ resource "azurerm_monitor_metric_alert" "metric_1" {
   description         = "Action will be triggered when average failure count is greater than 5 for the visitor counter."
   frequency           = "PT1M"
   window_size         = "PT5M"
-  
+
   criteria {
     aggregation            = "Average"
     metric_name            = "${var.function_name} Failures"
@@ -346,7 +321,7 @@ resource "azurerm_monitor_metric_alert" "metric_2" {
     operator         = "GreaterThan"
     threshold        = 50
   }
-  
+
   action {
     action_group_id = azurerm_monitor_action_group.alert_notifications.id
   }
@@ -375,3 +350,236 @@ resource "azurerm_monitor_metric_alert" "metric_3" {
     action_group_id = azurerm_monitor_action_group.alert_notifications.id
   }
 }
+
+resource "azurerm_virtual_network" "vnet" {
+  name                = var.vnet_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  address_space       = ["10.0.0.0/16"]
+}
+
+resource "azurerm_subnet" "snet_func" {
+  name                 = var.subnet_function_name
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.1.0/24"]
+
+  delegation {
+    name = "func-delegation"
+    service_delegation {
+      name = "Microsoft.App/environments"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/action"
+      ]
+    }
+  }
+}
+
+resource "azurerm_subnet" "snet_pe" {
+  name                 = var.subnet_pe_name
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_cognitive_account" "openai" {
+  name                          = var.openai_account_name
+  location                      = azurerm_resource_group.rg.location
+  resource_group_name           = azurerm_resource_group.rg.name
+  kind                          = "OpenAI"
+  sku_name                      = var.openai_sku
+  public_network_access_enabled = false
+  local_auth_enabled            = false
+  custom_subdomain_name         = var.openai_account_name
+}
+
+resource "azurerm_cognitive_deployment" "gpt41nano" {
+  name                 = var.openai_model_name
+  cognitive_account_id = azurerm_cognitive_account.openai.id
+
+  model {
+    format  = "OpenAI"
+    name    = "gpt-4.1-nano"
+    version = "2025-04-14"
+  }
+
+  sku {
+    name     = "GlobalStandard"
+    capacity = 10
+  }
+}
+
+resource "azurerm_private_endpoint" "openai_pe" {
+  name                = "pe-oai-crc-prod-001"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  subnet_id           = azurerm_subnet.snet_pe.id
+
+  private_service_connection {
+    name                           = "psc-oai-crc-prod-001"
+    private_connection_resource_id = azurerm_cognitive_account.openai.id
+    subresource_names              = ["account"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "openai-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.openai_dns.id]
+  }
+}
+
+resource "azurerm_private_dns_zone" "openai_dns" {
+  name                = "privatelink.openai.azure.com"
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "openai_dns_link" {
+  name = "openai-dns-vnet-link"
+  # resource_group_name   = azurerm_resource_group.rg.name
+  # private_dns_zone_name = azurerm_private_dns_zone.openai_dns.id
+  private_dns_zone_id = azurerm_private_dns_zone.openai_dns.id
+  virtual_network_id  = azurerm_virtual_network.vnet.id
+}
+
+resource "azurerm_role_assignment" "func_openai_user" {
+  scope                = azurerm_cognitive_account.openai.id
+  role_definition_name = "Cognitive Services OpenAI User"
+  principal_id         = azurerm_function_app_flex_consumption.func.identity.0.principal_id
+}
+
+data "azurerm_function_app_host_keys" "func_keys" {
+  name                = azurerm_function_app_flex_consumption.func.name
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_api_management" "apim" {
+  name                = var.apim_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  publisher_name      = var.apim_publisher_name
+  publisher_email     = var.apim_publisher_email
+  sku_name            = "Consumption_0"
+}
+
+resource "azurerm_api_management_named_value" "func_key" {
+  name                = "func-crc-default-key"
+  resource_group_name = azurerm_resource_group.rg.name
+  api_management_name = azurerm_api_management.apim.name
+  display_name        = "func-crc-default-key"
+  value               = data.azurerm_function_app_host_keys.func_keys.default_function_key
+  secret              = true
+}
+
+resource "azurerm_api_management_api" "resume_api" {
+  name                  = "resume-summarizer-api"
+  resource_group_name   = azurerm_resource_group.rg.name
+  api_management_name   = azurerm_api_management.apim.name
+  revision              = "1"
+  display_name          = "Resume Summarizer API"
+  path                  = "resume-summarizer"
+  protocols             = ["https"]
+  subscription_required = true
+  service_url           = "https://${azurerm_function_app_flex_consumption.func.default_hostname}/api"
+}
+
+resource "azurerm_api_management_api_operation" "summarize" {
+  operation_id        = "summarize-resume"
+  api_name            = azurerm_api_management_api.resume_api.name
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+  display_name        = "Summarize Resume"
+  method              = "POST"
+  url_template        = "/summarize"
+}
+
+resource "azurerm_api_management_api_policy" "resume_api_policy" {
+  api_name            = azurerm_api_management_api.resume_api.name
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+
+  xml_content = <<XML
+<policies>
+    <inbound>
+        <base />
+        <cors allow-credentials="false">
+            <allowed-origins>
+                <origin>https://resume.technicalmind.cloud</origin>
+            </allowed-origins>
+            <allowed-methods preflight-result-max-age="600">
+                <method>POST</method>
+                <method>OPTIONS</method>
+            </allowed-methods>
+            <allowed-headers>
+                <header>Content-Type</header>
+                <header>Ocp-Apim-Subscription-Key</header>
+            </allowed-headers>
+        </cors>
+        <choose>
+            <when condition='@(context.Request.Body != null &amp;&amp; context.Request.Body.As&lt;byte[]&gt;(preserveContent: true).Length &gt; 65536)'>
+                <return-response>
+                    <set-status code="413" reason="Payload Too Large" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>{"message": "Request payload exceeds maximum size of 65,536 bytes.", "error_code": "PAYLOAD_TOO_LARGE"}</set-body>
+                </return-response>
+            </when>
+        </choose>
+        <rate-limit calls="5" renewal-period="60" />
+        <quota calls="100" renewal-period="86400" />
+        <set-header name="x-functions-key" exists-action="override">
+            <value>{{func-crc-default-key}}</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+        <choose>
+            <when condition='@(context.LastError != null &amp;&amp; context.LastError.Reason == "OperationNotFound")'>
+                <return-response>
+                    <set-status code="405" reason="Method Not Allowed" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-header name="Allow" exists-action="override">
+                        <value>POST, OPTIONS</value>
+                    </set-header>
+                    <set-body>{"message": "Only POST requests are allowed.", "error_code": "METHOD_NOT_ALLOWED"}</set-body>
+                </return-response>
+            </when>
+        </choose>
+    </on-error>
+</policies>
+XML
+}
+
+resource "azurerm_api_management_product" "resume_product" {
+  product_id            = "resume-summarizer"
+  api_management_name   = azurerm_api_management.apim.name
+  resource_group_name   = azurerm_resource_group.rg.name
+  display_name          = "Resume Summarizer"
+  subscription_required = true
+  approval_required     = false
+  published             = true
+}
+
+resource "azurerm_api_management_product_api" "resume_product_api" {
+  api_name            = azurerm_api_management_api.resume_api.name
+  product_id          = azurerm_api_management_product.resume_product.product_id
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_api_management_subscription" "frontend_sub" {
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+  display_name        = "Frontend Resume App"
+  product_id          = azurerm_api_management_product.resume_product.id
+  state               = "active"
+}
+

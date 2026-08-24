@@ -24,7 +24,7 @@
 }
 
 * {
-    font-family: "Raleway", sans-serif;
+    font-family: Raleway, sans-serif;
 }
 
 body,
@@ -78,7 +78,7 @@ header * {
 }
 
 header .name * {
-    font-family: "Raleway";
+    font-family: Raleway, sans-serif;
     font-size: 30pt;
 }
 
@@ -234,4 +234,143 @@ footer {
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     z-index: 1000;
+}
+
+/* --- Resume Summarizer --- */
+.resume-summarizer-section {
+    background-color: #f7f7f7;
+    padding: 30px 0;
+}
+
+.resume-summarizer-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 25px 30px;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.resume-summarizer-container h2 {
+    font-size: 20pt;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 5pt;
+}
+
+.summarizer-description {
+    font-size: 10pt;
+    color: #777;
+    margin-bottom: 15pt;
+}
+
+#resume-text-input {
+    width: 100%;
+    padding: 12px;
+    font-family: "Source Code Pro", monospace;
+    font-size: 10pt;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    resize: vertical;
+    min-height: 120px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+#resume-text-input:focus {
+    outline: none;
+    border-color: #999;
+}
+
+.summarizer-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.char-counter {
+    font-size: 8pt;
+    color: #999;
+}
+
+#summarize-btn {
+    font-family: Raleway, sans-serif;
+    font-size: 10pt;
+    font-weight: 600;
+    padding: 8px 24px;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#summarize-btn:hover {
+    background-color: #555;
+}
+
+#summarize-btn:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
+
+.summary-content {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #fafafa;
+    border-left: 3px solid #333;
+    border-radius: 2px;
+}
+
+.summary-content h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 8pt;
+}
+
+.summary-content p {
+    font-size: 10pt;
+    line-height: 1.6;
+    color: #444;
+    margin: 0;
+    white-space: pre-line;
+}
+
+.summary-loading {
+    margin-top: 15px;
+    font-size: 10pt;
+    color: #777;
+    font-style: italic;
+}
+
+.summary-error {
+    margin-top: 15px;
+    font-size: 10pt;
+    color: #c0392b;
+}
+
+@media (max-width: 800px) {
+    .resume-summarizer-container {
+        margin: 0 10px;
+        padding: 20px 15px;
+    }
+}
+
+@media (max-width: 500px) {
+    .summarizer-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .char-counter {
+        text-align: right;
+    }
+
+    #summarize-btn {
+        width: 100%;
+    }
 }
