@@ -426,6 +426,10 @@ resource "azurerm_private_endpoint" "openai_pe" {
     name                 = "openai-dns-zone-group"
     private_dns_zone_ids = [azurerm_private_dns_zone.openai_dns.id]
   }
+
+  depends_on = [
+    azurerm_cognitive_account.openai
+  ]
 }
 
 resource "azurerm_private_dns_zone" "openai_dns" {
