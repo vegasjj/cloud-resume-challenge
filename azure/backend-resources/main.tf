@@ -515,13 +515,13 @@ resource "azurerm_api_management_api_policy" "resume_api_policy" {
             </allowed-headers>
         </cors>
         <choose>
-            <when condition='@(context.Request.Body != null &amp;&amp; context.Request.Body.As&lt;byte[]&gt;(preserveContent: true).Length &gt; 15000)'>
+            <when condition='@(context.Request.Body != null &amp;&amp; context.Request.Body.As&lt;byte[]&gt;(preserveContent: true).Length &gt; 65536)'>
                 <return-response>
                     <set-status code="413" reason="Payload Too Large" />
                     <set-header name="Content-Type" exists-action="override">
                         <value>application/json</value>
                     </set-header>
-                    <set-body>{"message": "Request payload exceeds maximum size of 15,000 bytes.", "error_code": "PAYLOAD_TOO_LARGE"}</set-body>
+                    <set-body>{"message": "Request payload exceeds maximum size of 65,536 bytes.", "error_code": "PAYLOAD_TOO_LARGE"}</set-body>
                 </return-response>
             </when>
         </choose>
