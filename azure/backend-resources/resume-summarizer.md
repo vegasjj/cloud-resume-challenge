@@ -34,7 +34,7 @@ flowchart LR
 ## OpenAI Deployment
 
 - GPT-4.1-nano is chosen because of its cost-effectiveness for demo projects, in production environments model selection must carry other considerations like performance or precision to complete the tasks.
-- Input length limit: 10,000 characters (~2,500 tokens) - Enforced client side.
+- Input length limit: 10,000 characters (~2,500 tokens) - Enforced client side and at API level (after `.strip()`).
 - Payload size validation: rejects requests over 65,536 bytes (~10K chars + non-ASCII text + JSON overhead) - Enforced at APIM level.
 - OpenAI API style: Using the Responses API (client.responses.create()) instead of Chat Completions.
 - Outbound data loss prevention is a non issue here as only basic inference for summarization is performed which is then return to the web client. No tool calls or model-initated access to external access is supported as the current pipeline is one way from the wep app to the model deployment. Also, data is processed within an **Enterprise Date Boundary** meaning:
