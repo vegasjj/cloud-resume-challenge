@@ -36,7 +36,9 @@ flowchart LR
 - GPT-4.1-nano is chosen because of its cost-effectiveness for demo projects, in production environments model selection must carry other considerations like performance or precision to complete the tasks.
 - Input length limit: 10,000 characters (~2,500 tokens) — Enforced client side.
 - OpenAI API style: Using the Responses API (client.responses.create()) instead of Chat Completions.
-- Outbound data loss prevention is a non issue here as only basic inference for summarization is performance which is then return to the web client. No tool calls or external resources are involved, and the model never initiate any communication as the current pipeline is one way..
+- Outbound data loss prevention is a non issue here as only basic inference for summarization is performed which is then return to the web client. No tool calls or model-initated access to external access is supported as the current pipeline is one way from the wep app to the model deployment. Also, data is processed within an **Enterprise Date Boundary** meaning:
+    - Resumes submitted will never be used to train models.
+    - Summaries will be processed statelessly in memory (subject to transient abuse logs).
 
 ## Changes to the current project
 
