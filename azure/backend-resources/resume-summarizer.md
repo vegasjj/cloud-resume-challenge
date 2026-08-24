@@ -37,6 +37,7 @@ flowchart LR
 - Input length limit: 10,000 characters (~2,500 tokens) - Enforced client side and at API level (after `.strip()`).
 - Payload size validation: rejects requests over 65,536 bytes (~10K chars + non-ASCII text + JSON overhead) - Enforced at APIM level.
 - OpenAI API style: Using the Responses API (client.responses.create()) instead of Chat Completions.
+- The identity in charge with assigning the `Cognitive Services OpenAI User` permission to the API (so it can send request to the OpenAI model) must have proper authorization (`Role Based Access Control Administrator`) as the `Contributor` role cannot carry out this action by itself. 
 - Outbound data loss prevention is a non issue here as only basic inference for summarization is performed which is then return to the web client. No tool calls or model-initated access to external access is supported as the current pipeline is one way from the wep app to the model deployment. Also, data is processed within an **Enterprise Date Boundary** meaning:
     - Resumes submitted will never be used to train models.
     - Summaries will be processed statelessly in memory (subject to transient abuse logs).
