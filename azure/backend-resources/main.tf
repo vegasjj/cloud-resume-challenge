@@ -577,6 +577,30 @@ resource "azurerm_api_management_product" "resume_product" {
   published             = true
 }
 
+resource "azurerm_api_management_product_policy" "example" {
+  product_id          = azurerm_api_management_product.resume_product.product_id
+  api_management_name = azurerm_api_management.apim.name
+  resource_group_name = azurerm_resource_group.rg.name
+
+  xml_content = <<XML
+<policies>
+    <inbound>
+        <base />
+        <quota calls="100" renewal-period="86400" />
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
+XML
+}
+
 resource "azurerm_api_management_product_api" "resume_product_api" {
   api_name            = azurerm_api_management_api.resume_api.name
   product_id          = azurerm_api_management_product.resume_product.product_id
