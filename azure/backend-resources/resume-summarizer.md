@@ -50,6 +50,8 @@ flowchart LR
 
 **TODO:** Finish section.
 
+- A `time_sleep` resource (at least 30 seconds) is required for the OpenAI account's private endpoint creation doesn't fail immediately as network provisioning is still pending.
+
 ### Python API
 
 **TODO:** Finish section.
