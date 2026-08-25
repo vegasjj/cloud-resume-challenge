@@ -382,6 +382,12 @@ resource "azurerm_subnet" "snet_pe" {
   address_prefixes     = ["10.0.2.0/24"]
 }
 
+resource "time_sleep" "wait_for_cognitive_account" {
+  depends_on = [azurerm_cognitive_account.openai]
+
+  create_duration = "30s"
+}
+
 resource "azurerm_cognitive_account" "openai" {
   name                          = var.openai_account_name
   location                      = azurerm_resource_group.rg.location
@@ -428,7 +434,7 @@ resource "azurerm_private_endpoint" "openai_pe" {
   }
 
   depends_on = [
-    azurerm_cognitive_account.openai
+    time_sleep.wait_for_cognitive_account
   ]
 }
 
