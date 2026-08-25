@@ -590,4 +590,5 @@ resource "azurerm_api_management_subscription" "frontend_sub" {
   display_name        = "Frontend Resume App"
   product_id          = azurerm_api_management_product.resume_product.id
   state               = "active"
+  allow_tracing       = false
 }
