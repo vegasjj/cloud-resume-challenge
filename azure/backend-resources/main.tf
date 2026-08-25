@@ -536,7 +536,6 @@ resource "azurerm_api_management_api_policy" "resume_api_policy" {
             </when>
         </choose>
         <rate-limit calls="5" renewal-period="60" />
-        <quota calls="100" renewal-period="86400" />
         <set-header name="x-functions-key" exists-action="override">
             <value>{{func-crc-default-key}}</value>
         </set-header>
@@ -592,4 +591,3 @@ resource "azurerm_api_management_subscription" "frontend_sub" {
   product_id          = azurerm_api_management_product.resume_product.id
   state               = "active"
 }
-
