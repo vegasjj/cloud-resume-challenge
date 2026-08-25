@@ -415,41 +415,44 @@ resource "azurerm_cognitive_deployment" "gpt41nano" {
   }
 }
 
-resource "azurerm_private_endpoint" "openai_pe" {
-  name                = "pe-oai-crc-prod-001"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  subnet_id           = azurerm_subnet.snet_pe.id
+# Private endpoint configuration must be active only when a demo is scheduled
+# to avoid idle costs (~ $7.2 per month).
 
-  private_service_connection {
-    name                           = "psc-oai-crc-prod-001"
-    private_connection_resource_id = azurerm_cognitive_account.openai.id
-    subresource_names              = ["account"]
-    is_manual_connection           = false
-  }
+# resource "azurerm_private_endpoint" "openai_pe" {
+#   name                = "pe-oai-crc-prod-001"
+#   location            = azurerm_resource_group.rg.location
+#   resource_group_name = azurerm_resource_group.rg.name
+#   subnet_id           = azurerm_subnet.snet_pe.id
 
-  private_dns_zone_group {
-    name                 = "openai-dns-zone-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.openai_dns.id]
-  }
+#   private_service_connection {
+#     name                           = "psc-oai-crc-prod-001"
+#     private_connection_resource_id = azurerm_cognitive_account.openai.id
+#     subresource_names              = ["account"]
+#     is_manual_connection           = false
+#   }
 
-  depends_on = [
-    time_sleep.wait_for_cognitive_account
-  ]
-}
+#   private_dns_zone_group {
+#     name                 = "openai-dns-zone-group"
+#     private_dns_zone_ids = [azurerm_private_dns_zone.openai_dns.id]
+#   }
 
-resource "azurerm_private_dns_zone" "openai_dns" {
-  name                = "privatelink.openai.azure.com"
-  resource_group_name = azurerm_resource_group.rg.name
-}
+#   depends_on = [
+#     time_sleep.wait_for_cognitive_account
+#   ]
+# }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "openai_dns_link" {
-  name = "openai-dns-vnet-link"
-  # resource_group_name   = azurerm_resource_group.rg.name
-  # private_dns_zone_name = azurerm_private_dns_zone.openai_dns.id
-  private_dns_zone_id = azurerm_private_dns_zone.openai_dns.id
-  virtual_network_id  = azurerm_virtual_network.vnet.id
-}
+# resource "azurerm_private_dns_zone" "openai_dns" {
+#   name                = "privatelink.openai.azure.com"
+#   resource_group_name = azurerm_resource_group.rg.name
+# }
+
+# resource "azurerm_private_dns_zone_virtual_network_link" "openai_dns_link" {
+#   name = "openai-dns-vnet-link"
+#   # resource_group_name   = azurerm_resource_group.rg.name
+#   # private_dns_zone_name = azurerm_private_dns_zone.openai_dns.id
+#   private_dns_zone_id = azurerm_private_dns_zone.openai_dns.id
+#   virtual_network_id  = azurerm_virtual_network.vnet.id
+# }
 
 resource "azurerm_role_assignment" "func_openai_user" {
   scope                = azurerm_cognitive_account.openai.id
