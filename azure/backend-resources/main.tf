@@ -568,6 +568,10 @@ resource "azurerm_api_management_api_policy" "resume_api_policy" {
     </on-error>
 </policies>
 XML
+
+depends_on = [
+    azurerm_api_management_named_value.func_key
+  ]
 }
 
 resource "azurerm_api_management_product" "resume_product" {
