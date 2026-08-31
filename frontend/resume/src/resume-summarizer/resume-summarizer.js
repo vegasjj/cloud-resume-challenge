@@ -7,8 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const MAX_LENGTH = 10000;
     const REQUEST_TIMEOUT_MS = 30000;
-    const API_ENDPOINT = "https://apim-crc-prod-001.azure-api.net/resume-summarizer/summarize";
-    const APIM_SUBSCRIPTION_KEY = ""; // Set after deployment from terraform output
+    const API_ENDPOINT = typeof APIM_CONFIG !== "undefined" ? APIM_CONFIG.API_ENDPOINT : "";
+    const APIM_SUBSCRIPTION_KEY = typeof APIM_CONFIG !== "undefined" ? APIM_CONFIG.SUBSCRIPTION_KEY : "";
 
     if (!form || !textarea || !button || !resultContainer || !charCounter) {
         return;
