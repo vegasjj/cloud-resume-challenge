@@ -1,3 +1,6 @@
 codealike.json
 .vscode
 plans/
+
+# Generated at deployment time by deploy-frontend.yml
+frontend/resume/src/resume-summarizer/config.js

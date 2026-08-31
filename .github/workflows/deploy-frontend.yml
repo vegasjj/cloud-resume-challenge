@@ -59,6 +59,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Fetch backend Terraform outputs
+        id: backend-outputs
+        uses: hashicorp-forge/terraform-cloud-action/outputs@v1
+        with:
+          token: ${{ secrets.TF_API_TOKEN_BACKEND }}
+          organization: azure-terraform-labs
+          workspace: azure-cloud-resume-challenge-backend-prod
+
+      - name: Generate resume summarizer config
+        env:
+          APIM_ENDPOINT: ${{ fromJSON(steps.backend-outputs.outputs.workspace-outputs-json).apim_resume_endpoint }}
+          APIM_KEY: ${{ fromJSON(steps.backend-outputs.outputs.workspace-outputs-json).apim_subscription_key }}
+        run: |
+          cat > ./frontend/resume/src/resume-summarizer/config.js << 'TEMPLATE'
+          // Auto-generated at deployment time — do not edit manually or commit to repository.
+          // See deploy-frontend.yml for the generation step.
+          const APIM_CONFIG = Object.freeze({
+              API_ENDPOINT: "__APIM_ENDPOINT__",
+              SUBSCRIPTION_KEY: "__APIM_KEY__"
+          });
+          TEMPLATE
+          sed -i "s|__APIM_ENDPOINT__|${APIM_ENDPOINT}|g" ./frontend/resume/src/resume-summarizer/config.js
+          sed -i "s|__APIM_KEY__|${APIM_KEY}|g" ./frontend/resume/src/resume-summarizer/config.js
+
       - name: Azure Login using OIDC
         uses: azure/login@v3
         with:
