@@ -72,6 +72,16 @@ jobs:
           APIM_ENDPOINT: ${{ fromJSON(steps.backend-outputs.outputs.workspace-outputs-json).apim_resume_endpoint }}
           APIM_KEY: ${{ fromJSON(steps.backend-outputs.outputs.workspace-outputs-json).apim_subscription_key }}
         run: |
+          if [ -z "$APIM_ENDPOINT" ]; then
+            echo "Error: APIM_ENDPOINT Terraform output is missing or empty." >&2
+            exit 1
+          fi
+
+          if [ -z "$APIM_KEY" ]; then
+            echo "Error: APIM_KEY Terraform output is missing or empty." >&2
+            exit 1
+          fi
+
           cat > ./frontend/resume/src/resume-summarizer/config.js << 'TEMPLATE'
           // Auto-generated at deployment time — do not edit manually or commit to repository.
           // See deploy-frontend.yml for the generation step.
