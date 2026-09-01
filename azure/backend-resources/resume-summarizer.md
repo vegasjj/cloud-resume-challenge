@@ -75,3 +75,7 @@ flowchart LR
 - The subscription key to call the API will be manually injected post deployment on JavaScript and an automated fix will be implemented after a minimum viable product is functional (the fix could add unforeseen frontend architecture changes outside of the scope os this PR).
 - A temporal guard is added on [`resume-summarizer.js`](../../frontend/resume/src/resume-summarizer/resume-summarizer.js) so if the subscription key is missing than prevent an unhandled failed operation.
 - The risk of publishing the subscription key in static JavaScript is fine in this case as it only provides throttling functionality (still, `allow_tracing=false` must be set for the subscription to avoid secret leaking), the function is authenticated and the OpenAI deployment is behind a private endpoint accessible through managed identity only which provide the real security.
+
+## Future improvements
+
+- Enabling the `stream` feature in the OpenAI Responses API to avoid making the user wait for the finished summarization process before visualization. 
